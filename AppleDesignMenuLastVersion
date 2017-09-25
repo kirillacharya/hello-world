@@ -1,0 +1,377 @@
+
+#include "Lib.h"
+
+//-----------------------------------------------------------------------------
+
+const int BS_NONE      = 0,
+          BS_MOUSEOVER = 1,
+          BS_CLICK     = 2;
+
+//-----------------------------------------------------------------------------
+
+const int       CMD_NONE   = 0,
+                CMD_BUBBLESORT = 1,
+                CMD_LINEARPASTSORT = 2,
+                CMD_BINARYPASTSORT = 3,
+                CMD_SELECTIONSORT = 4,
+                CMD_CLEAR  = 5,
+                CMD_HELP  = 6,
+                CMD_EXIT   = 7,
+                CMD_QUICKSORT = 8;
+
+//-----------------------------------------------------------------------------
+
+struct Button
+    {
+    int command;
+
+    const char* text;
+    const char* HelpText;
+
+    COLORREF color;
+
+    HDC Image;
+    HDC MouseOverImage;
+
+    int x1, x2;
+    int y1, y2;
+
+    int status;
+    };
+
+
+struct Settings
+    {
+    int ScaleX, ScaleY;
+
+    int GridX, GridY;
+    };
+
+//-----------------------------------------------------------------------------
+
+void ButtonsInit ( Button data[], int size, int x0, int y0, int SizeX, int SizeY, int ButtonSizeX,
+                   int ButtonsSizeY );
+
+void ButtonsDraw ( const Button data[], int size, HDC MouseOnButtons, HDC AllButtons );
+
+int RunMenu ( Button data[], int size, HDC MouseOnButtons, HDC AllButtons, HDC Home, HDC Home1 );
+
+int ButtonsTest ( Button data[], int size );
+
+void ButtonDraw ( const Button* button, HDC MouseOnButtons, HDC AllButtons, int Xcoordinate );
+
+int ButtonTest ( Button* data );
+
+void Clear ( int x1, int y1, int x2, int y2, HDC ADM );
+
+void Back ( Button data[], int size );
+
+void BackGround ( COLORREF TopColor, int LineWidth, int FontSize, const char* title, int x1, int x2/*, const int command,
+                  int locX0, int locY0, int width0, int lenght0  */);
+
+void Window ( COLORREF FrameColor, COLORREF WindowColor, int x1, int y1, int x2, int y2 );
+
+
+int Exit ( HDC Home1, HDC Home );
+
+void ImageMove ( HDC Image, int x1, int y1, int x2, int y2 );
+
+
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow ( 1400, 800 );
+
+    txSelectFont ( "Arial", 40 );
+
+    HDC ADM = txLoadImage ( "ADMtitle.bmp" );
+    HDC MouseOnButtons = txLoadImage ( "AllButtonsPS.bmp" );
+    HDC AllButtons = txLoadImage ( "AllButtons.bmp" );
+    HDC Intro = txLoadImage ( "Intro.bmp" );
+    HDC Home = txLoadImage ( "Home.bmp" );
+    HDC Home1 = txLoadImage ( "Home1.bmp" );
+
+    txBitBlt (txDC(), 0, 0, 1400, 800, Intro, 0, 0);
+    getch();
+
+    Settings Sorts_Settings = { 10, 1, 100, 100 };
+
+    txBitBlt (txDC(), 0, 0, 1400, 800, ADM, 0, 0);
+
+    Button data[] = { { CMD_QUICKSORT, "Quick Sort", "Start Quick Sort", RGB( 255, 0, 255 ), },
+                      { CMD_LINEARPASTSORT, "Insertion Sort", "Start Linear Paste Sort", TX_LIGHTGREEN },
+                      { CMD_BINARYPASTSORT,     "Binary Insertion",     "Binary Paste Sort", TX_LIGHTCYAN },
+                      { CMD_BUBBLESORT, "Bubble Sort", "Start Bubble Sort", TX_LIGHTRED },
+                      { CMD_SELECTIONSORT,     "Selection Sort",     "Start Selection Sort", TX_ORANGE},
+                      { CMD_CLEAR,            "Clear screen",               "Clear The Screen?", RGB( 255, 0, 255 ) }
+                      /*({ CMD_EXIT,       "Exit",        "Are you sure?",     TX_BLACK, SSB, LiteSelectionButton }*/ };
+
+
+    ButtonsInit ( data, sizearr(data), 1100, 60, 0, 115, 85, 100 );
+
+    int x1 = 200, y1 = 125, x2 = 1035, y2 = 660;
+    COLORREF AxisColor = RGB( 255, 255, 255 ), GridColor = RGB( 150, 150, 150 );
+
+    Window( RGB( 200, 240, 200 ), RGB( 30, 30, 30 ), x1, y1, x2, y2 );
+
+
+    while ( !GetAsyncKeyState ( VK_ESCAPE ) )
+        {
+        switch ( RunMenu ( data, sizearr(data), MouseOnButtons, AllButtons, Home, Home1 ) )
+            {
+            txSetFillColor ( TX_BLACK );
+            txClear();
+
+            case CMD_BUBBLESORT:     GraphForAnySort ( Bubble,     TX_LIGHTRED,   TX_LIGHTRED,   Sorts_Settings.ScaleX, Sorts_Settings.ScaleY,
+                                                       Sorts_Settings.GridX, Sorts_Settings.GridY, x1, y1, x2, y2, AxisColor,
+                                                       GridColor );
+                 break;
+
+            case CMD_LINEARPASTSORT: GraphForAnySort(  LinearPast, TX_LIGHTGREEN, TX_LIGHTGREEN, Sorts_Settings.ScaleX, Sorts_Settings.ScaleY,
+                                                       Sorts_Settings.GridX, Sorts_Settings.GridY, x1, y1, x2, y2, AxisColor,
+                                                       GridColor );
+                 break;
+
+            case CMD_BINARYPASTSORT: GraphForAnySort(  BinaryPast, TX_LIGHTCYAN,  TX_LIGHTCYAN,  Sorts_Settings.ScaleX, Sorts_Settings.ScaleY,
+                                                       Sorts_Settings.GridX, Sorts_Settings.GridY, x1, y1, x2, y2, AxisColor,
+                                                       GridColor );
+                 break;
+
+            case CMD_SELECTIONSORT:  GraphForAnySort(  Selection,  TX_ORANGE,     TX_ORANGE,     Sorts_Settings.ScaleX, Sorts_Settings.ScaleY,
+                                                       Sorts_Settings.GridX, Sorts_Settings.GridY, x1, y1, x2, y2, AxisColor,
+                                                       GridColor );
+                 break;
+
+            case CMD_CLEAR:          Clear( x1, y1, x2, y2, ADM );
+                 break;
+
+            case CMD_QUICKSORT:      GraphForAnySort (  QuickSortZeroSize, RGB( 255, 0, 255 ), RGB( 255, 0, 255 ), Sorts_Settings.ScaleX, Sorts_Settings.ScaleY,
+                                                        Sorts_Settings.GridX, Sorts_Settings.GridY, x1, y1, x2, y2, AxisColor, GridColor );
+                 break;
+
+            case CMD_EXIT:
+                 return 0;
+
+            default:  break;
+            }
+        }
+
+    txDeleteDC ( ADM );
+    txDeleteDC ( MouseOnButtons );
+    txDeleteDC ( AllButtons );
+
+    return 0;
+    }
+
+//-----------------------------------------------------------------------------
+
+int RunMenu ( Button data[], int size, HDC MouseOnButtons, HDC AllButtons, HDC Home, HDC Home1 )
+    {
+    while ( !GetAsyncKeyState ( VK_ESCAPE ) )
+        {
+        Exit ( Home1, Home );
+
+        int command = ButtonsTest ( data, size );
+        if ( command != CMD_NONE ) return command;
+
+        ButtonsDraw ( data, size, MouseOnButtons, AllButtons );
+
+        txSleep (50);
+        }
+
+    txDeleteDC ( Home );
+    txDeleteDC ( Home1 );
+
+    return CMD_NONE;
+    }
+
+//-----------------------------------------------------------------------------
+
+void ButtonsInit ( Button data[], int size, int x0, int y0, int SizeX, int SizeY, int ButtonSizeX,
+                   int ButtonSizeY )
+     {
+     for ( int i = 0; i < size; i++ )
+        {
+        data[i].x1 = x0 + i * SizeX;
+        data[i].y1 = y0 + i * SizeY;
+        data[i].x2 = x0 + i * SizeX + ButtonSizeX;
+        data[i].y2 = y0 + i * SizeY + ButtonSizeY;
+        }
+
+     }
+
+
+//-----------------------------------------------------------------------------
+
+void ButtonsDraw ( const Button data[], int size, HDC MouseOnButtons, HDC AllButtons )
+    {
+    int xCoordinate;
+
+    for ( int i = 0; i < size; i++ )
+        {
+        xCoordinate = i*100;
+
+        ButtonDraw ( &data[i], MouseOnButtons, AllButtons, xCoordinate );
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+int ButtonsTest ( Button data[], int size )
+    {
+    for ( int i = 0; i < size; i++ )
+        {
+        if ( ButtonTest ( &data[i] ) == BS_CLICK ) return data[i].command;
+        }
+
+    return CMD_NONE;
+    }
+
+//-----------------------------------------------------------------------------
+
+void ButtonDraw ( const Button* button, HDC MouseOnButtons, HDC AllButtons, int Xcoordinate )
+     {
+     txSelectFont ( "Arial", 22 );
+
+     if ( button -> status == BS_MOUSEOVER )
+        {
+        int i = 0;
+        while ( i < 85 )
+            {
+            txBitBlt (txDC(), button -> x1, button -> y1, 100, i, MouseOnButtons, Xcoordinate, 0);
+
+            i += 5;
+            txSleep(0);
+            }
+
+        txSetColor ( TX_WHITE, 3 );
+        }
+
+     else
+        {
+        txBitBlt (txDC(), button -> x1, button -> y1, 100, 100, AllButtons, Xcoordinate, 0);
+
+        txSetColor ( button->color, 3 );
+        }
+
+     txDrawText ( button -> x1, button -> y2 - 12, button -> x2 + 18, button -> y2 + 8, button -> text );
+     }
+
+//-----------------------------------------------------------------------------
+
+int ButtonTest ( Button* button )
+    {
+    int MX = txMouseX(), MY = txMouseY();
+
+    if ( button -> x1 <= MX && MX <= button -> x2 &&
+         button -> y1 <= MY && MY <= button -> y2 )
+        {
+        button -> status = BS_MOUSEOVER;
+
+        if ( txMouseButtons() == 1 )
+            {
+            button -> status = BS_CLICK;
+
+            return BS_CLICK;
+            }
+        }
+
+    else button -> status = BS_NONE;
+
+    return BS_NONE;
+    }
+
+
+//-----------------------------------------------------------------------------
+
+void Clear ( int x1, int y1, int x2, int y2, HDC ADM )
+     {
+     /*int x = 0, y = 0;
+     while ( x <= 1400 && y <= 800 )
+        {
+        txBitBlt (txDC(), 0, 0, x, y, ADM, 0, 0);
+
+        x += 42;
+        y += 24;
+        txSleep(100);
+        }                     */
+
+     txBitBlt (txDC(), 0, 0, 1400, 800, ADM, 0, 0);
+
+     Window( RGB( 255, 240, 245 ), RGB( 30, 30, 30 ), x1, y1, x2, y2 );
+     //BackGround (  RGB( 0, 255, 255 ), 5, 50, "SORT EFFICIENCY COMPARER", x1, x2 );
+     }
+
+//-----------------------------------------------------------------------------
+
+int Exit ( HDC Home1, HDC Home )
+    {
+    int MX = txMouseX(), MY = txMouseY();
+
+    if ( 1290 <= MX && MX <= 1376 &&
+         360 <= MY && MY <= 440 )
+        {
+        txBitBlt (txDC(), 1290, 360, 1376, 440, Home, 0, 0);
+
+        if ( txMouseButtons() == 1 )  return CMD_EXIT;
+        }
+
+    else
+        {
+        txBitBlt (txDC(), 1290, 360, 1376, 440, Home1, 0, 0);
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void ImageMove ( HDC Image, int x1, int y1, int x2, int y2 )
+    {
+    int x = x1, y = y1;
+
+    while ( x <= x2 && y <= y2 )
+        {
+        txBitBlt (txDC(), 0, 0, x, y, Image, 0, 0);
+
+        txSleep(1);
+        x += x2/100;
+        y += y2/100;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void BackGround ( COLORREF TopColor, int LineWidth, int FontSize, const char* title, int x1, int x2 /*, const int command,
+                  int locX0, int locY0, int width0, int lenght0 */ )
+    {
+    txSetColor ( TopColor, LineWidth );
+
+    int x_0 = x1, y_0 = 20, x_1 = x2, y_1 = 85;
+
+    txRectangle ( x_0, y_0, x_1, y_1 );
+
+    txSelectFont ( "Arial", FontSize );
+
+    txDrawText (  x_0 + 5, y_0, x_1 + 5, y_1, title );
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void Window( COLORREF FrameColor, COLORREF WindowColor, int x1, int y1, int x2, int y2 )
+    {
+    txSetColor ( FrameColor, 4 );
+    txSetFillColor ( WindowColor );
+
+    txRectangle ( x1, y1, x2, y2 );
+    }
+
+//-----------------------------------------------------------------------------
+
+
+//{----------------------------------------------------------------------------
+//!
+//}----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
