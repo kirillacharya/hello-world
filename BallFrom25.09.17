@@ -1,0 +1,291 @@
+
+#include "TXLib.h"
+
+//-----------------------------------------------------------------------------
+
+struct Ball_t
+    {
+    double x, y;
+    double vx, vy;
+
+    int bounce;
+
+    int number;
+
+    int r;
+
+    COLORREF color;
+    };
+
+//-----------------------------------------------------------------------------
+
+void BallInit ( Ball_t *Ball, int randX, int randY, int randVX, int randVY );
+void AllBallsInit ( Ball_t Array[], int size, int randX, int randY, int randVX, int randVY );
+void DrawBall ( Ball_t Ball );
+void AllBallsDraw ( Ball_t Array[], int size );
+void BallPhysics ( Ball_t *Ball, double dt, int TableX1, int TableY1 );
+void AllBallsPhysics ( Ball_t Array[], int size, double dt, int TableX1, int TableY1 );
+void Selection ( Ball_t Array[], int size );
+int Searcher ( Ball_t Array[], int size, int min, int i );
+//void BounceCounter ( Ball_t Array[], int size, int TableX1, int TopNum );
+
+void Swapper ( Ball_t Array[], int a, int b );
+
+//void PrintBallArray ( Ball_t Array[], int size, int TableX1, int TopNum );
+void Bubble ( Ball_t Array[], int size );
+void Print ( Ball_t data[], int size );
+
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow (800, 600);
+
+    const int Size = 5;
+
+    Ball_t Array[Size] = {};
+
+    int TableX1 = 500, TableY1 = 0;
+    double randVX = 1000, randVY = 1000;
+
+    AllBallsInit ( Array, Size, txGetExtentX() - TableX1, txGetExtentY(), randVX, randVY );
+
+    while ( !GetAsyncKeyState(VK_ESCAPE) )
+        {
+        AllBallsDraw ( Array, Size );
+        AllBallsPhysics ( Array, Size, 0.01, TableX1, TableY1 );
+
+        //Selection ( Array, Size );
+        //Bubble ( Array, Size );
+        BounceCounter ( Array, Size, TableX1, 5 );
+
+        txSetFillColor ( TX_WHITE );
+        txSleep(10);
+        txClear();
+        }
+
+    return 0;
+    }
+
+//-----------------------------------------------------------------------------
+
+void BallInit ( Ball_t *Ball, int randX, int randY, int randVX, int randVY )
+    {
+    Ball->color = RGB ( rand() % 255, rand() % 255, rand() % 255  );
+
+    Ball->x = rand() % randX, Ball->y = rand() % randY;
+    Ball->vx = rand() % randVX, Ball->vy = rand() % randVX;
+
+    Ball->r = rand() % 50;
+    }
+
+//-----------------------------------------------------------------------------
+
+void AllBallsInit ( Ball_t Array[], int size, int randX, int randY, int randVX, int randVY )
+    {
+    for ( int i = 0; i < size; i++ )
+        {
+        Array[i].number = i;
+        BallInit ( &Array[i], randX, randY, randVX, randVY );
+        }
+    }
+//-----------------------------------------------------------------------------
+
+void DrawBall ( Ball_t Ball )
+    {
+    txSetFillColor ( Ball.color );
+
+    txCircle ( Ball.x, Ball.y, Ball.r );
+    }
+
+//-----------------------------------------------------------------------------
+
+void AllBallsDraw ( Ball_t Array[], int size )
+    {
+    for ( int i = 0; i < size; i++ )
+        {
+        DrawBall ( Array[i] );
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void BallPhysics ( Ball_t *Ball, double dt, int TableX1, int TableY1 )
+    {
+    Ball->x = Ball->x + Ball->vx * dt;
+    Ball->y = Ball->y + Ball->vy * dt;
+
+    if ( Ball->x >= TableX1 - Ball->r )
+        {
+        Ball->x = TableX1 - Ball->r;
+
+        Ball->vx = -Ball->vx;
+
+        Ball->bounce++;
+        }
+
+    if ( Ball->y <= TableY1 + Ball->r )
+        {
+        Ball->y = TableY1 + Ball->r;
+
+        Ball->vy = -Ball->vy;
+
+        Ball->bounce++;
+        }
+
+    if ( Ball->x <= Ball->r )
+        {
+        Ball->x = Ball->r;
+
+        Ball->vx = -Ball->vx;
+
+        Ball->bounce++;
+        }
+
+    if ( Ball->y >= txGetExtentY() - Ball->r )
+        {
+        Ball->y = txGetExtentY() - Ball->r;
+
+        Ball->vy = -Ball->vy;
+
+        Ball->bounce++;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void AllBallsPhysics ( Ball_t Array[], int size, double dt, int TableX1, int TableY1 )
+    {
+    for ( int i = 0; i < size; i++ )
+        {
+        BallPhysics ( &Array[i], dt, TableX1, TableY1 );
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void BounceCounter ( Ball_t Array[], int size, int TableX1, int TopNum )
+    {
+    Selection ( Array, size );
+
+    PrintBallArray ( Array, size, TableX1, TopNum );
+
+    Print (Array, size );
+    getch();
+    }
+
+//-----------------------------------------------------------------------------
+
+void Selection ( Ball_t Array[], int size )
+    {
+    int interval = 0;
+
+    while ( interval < size )
+        {
+        int min = 0 + interval;
+        int i   = 1 + interval;
+
+        Swapper ( Array, interval, Searcher ( Array, size, min, i ) );
+
+        interval++;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+int Searcher ( Ball_t Array[], int size, int min, int i )
+    {
+    while ( i < size )
+        {
+        if ( Array[i].bounce < Array[min].bounce ) min = i;
+        i++;
+        }
+
+    return min;
+    }
+
+
+//-----------------------------------------------------------------------------
+
+void Swapper ( Ball_t Array[], int a, int b )
+    {
+    int agent = Array[a].number;
+    Array[a].number = Array[b].number;
+    Array[b].number = agent;
+    }
+
+//-----------------------------------------------------------------------------
+
+void PrintBallArray ( Ball_t Array[], int size, int TableX1, int TopNum )
+    {
+    char bounceStr[6] = "";
+    
+    int data[size] = {};
+    
+    
+
+    for ( int i = 0; i < TopNum; i++)
+        {
+     //   assert ( Array[i].number <= Array[i+1].number );
+        //char Number[6] = "";
+
+        //int BounceNum = Array[i].bounce;
+
+        itoa ( Array[i].bounce, bounceStr, 10 );
+
+        txSetColor ( Array[i].color, 2 );
+
+        txDrawText ( TableX1, txGetExtentY()/TopNum * i, txGetExtentX(), txGetExtentY()/TopNum * (i + 1), bounceStr );
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void Bubble ( Ball_t Array[], int size )
+    {
+    int i = 0;
+    while ( i < size )
+        {
+        int k = 0;
+
+        while ( k < size - i )
+            {
+            if ( Array[k].bounce > Array[k + 1].bounce )
+                {
+                Swapper ( Array, k, k + 1 );
+                }
+
+            k++;
+            }
+
+        i++;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void Print ( Ball_t data[], int size )
+    {
+    printf ( "\n\n" );
+
+    for (int i = 0; i < size; i++)
+        {
+        $y; printf ( "%2d  ", i );
+        }
+
+    printf ( "\n" );
+
+    for (int i = 0; i < size; i++)
+        {
+        $g; printf ("%d  ", data[i].bounce);
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+    
+    
