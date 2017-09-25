@@ -1,0 +1,90 @@
+
+#include "TXLib.h"
+
+void Selection ( int Array[], int size );
+int Searcher ( int Array[], int size, int min, int i );
+void Filler ( int data[], int size );
+void Print ( int data[], int size );
+
+void Swapper ( int Array[], int a, int b );
+
+int main()
+    {
+    txCreateWindow (800, 600);
+
+    int data = {};
+
+    return 0;
+    }
+
+void Selection ( int Array[], int size )
+    {
+    int interval = 0;
+
+    while ( interval < size )
+        {
+        int min = 0 + interval;
+        int i   = 1 + interval;
+
+        Swapper ( Array, interval, Searcher ( Array, size, min, i ) );
+
+        interval++;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+int Searcher ( int Array[], int size, int min, int i )
+    {
+    while ( i < size )
+        {
+        if ( Array[i].bounce > Array[min].bounce ) min = i;
+        i++;
+        }
+
+    return min;
+    }
+
+
+//-----------------------------------------------------------------------------
+
+void Swapper ( int Array[], int a, int b )
+    {
+    int agent = Array[a];
+    Array[a] = Array[b];
+    Array[b] = agent;
+    }
+
+//-----------------------------------------------------------------------------
+
+
+void Print ( int data[], int size )
+    {
+    printf ( "\n\n" );
+
+    for (int i = 0; i < size; i++)
+        {
+        $y; printf ( "%2d  ", i );
+        }
+
+    printf ( "\n" );
+
+    for (int i = 0; i < size; i++)
+        {
+        $g; printf ("%d  ", data[i]);
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void Filler ( int data[], int size )
+    {
+    int i = 0;
+    while (i < size)
+        {
+        data[i] = rand() % 10 * 10 + i;
+
+        i++;
+        }
+    }
