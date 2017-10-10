@@ -1,0 +1,272 @@
+
+#include "TXLib.h"
+
+//-----------------------------------------------------------------------------
+
+class CBall
+    {
+    double x, y;
+    double vx, vy;
+
+    int number;
+
+    int r;
+
+    public:
+
+    int bounce;
+
+    COLORREF SFcolor;
+    COLORREF Scolor;
+
+    CBall ();
+
+    void DrawBall ();
+    void BallPhysics ( double dt, int TableX1, int TableY1, int randX, int randY );
+    };
+
+//-----------------------------------------------------------------------------
+
+void PrintBallArray ( CBall Array[], int size, int TableX1, int TopNum );
+void AllBallsDraw ( CBall Array[], int size );
+void AllBallsPhysics ( CBall Array[], int size, double dt, int TableX1, int TableY1, int randX, int randY );
+void BounceCounter ( CBall Array[], int size, int TableX1, int TopNum );
+void Selection ( CBall Array[], int size );
+int Searcher ( CBall Array[], int size, int min, int i );
+void Swapper ( CBall Array[], int a, int b );
+void PrintBallArray ( CBall Array[], int size, int TableX1, int TopNum );
+
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow ( 1300, 700 );
+
+    HDC pooltable = txLoadImage ("pooltable.bmp");
+
+    const int Size = 10;
+
+    CBall Array[Size] = {};
+
+    int TableX1 = 85*txGetExtentX()/100, TableY1 = 0;
+    double randVX = 1000, randVY = 1000;
+    int randX = txGetExtentX() - TableX1, randY = txGetExtentY();
+
+    while ( !GetAsyncKeyState(VK_ESCAPE) )
+        {
+        AllBallsDraw ( Array, Size );
+        AllBallsPhysics ( Array, Size, 0.01, TableX1, TableY1, randX, randY );
+
+        Selection ( Array, Size );
+        BounceCounter ( Array, Size, TableX1, 5 );
+
+        txSetFillColor ( TX_WHITE );
+        txSleep(10);
+        txClear();
+        txBitBlt (txDC(), 0, 0, txGetExtentX(), 700, pooltable, 0, 0);
+        }
+
+    txDeleteDC( pooltable );
+
+    return 0;
+    }
+
+//-----------------------------------------------------------------------------
+
+CBall::CBall ()
+    {
+    bounce = 0;
+
+    SFcolor = RGB ( rand() % 255, rand() % 255, rand() % 255  );
+
+    Scolor = SFcolor;
+
+    x = rand() % 85*txGetExtentX()/100, y = rand() % txGetExtentY();
+    vx = rand() % 1000, vy = rand() % 1000;
+
+    r = rand() % 50;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CBall::DrawBall ()
+    {
+    txSetColor ( Scolor, 3 );
+    txSetFillColor ( SFcolor );
+
+    txCircle ( x, y, r );
+    }
+
+//-----------------------------------------------------------------------------
+
+void AllBallsDraw ( CBall Array[], int size )
+    {
+    for ( int i = 0; i < size; i++ )
+        Array[i].DrawBall();
+    }
+
+//-----------------------------------------------------------------------------
+
+void CBall::BallPhysics ( double dt, int TableX1, int TableY1, int randX, int randY )
+    {
+    x = x + vx * dt;
+    y = y + vy * dt;
+
+    if ( x >= TableX1 - r )
+        {
+        x = TableX1 - r;
+
+        vx = -vx;
+
+        bounce++;
+        }
+
+    if ( y <= TableY1 + r )
+        {
+        y = TableY1 + r;
+
+        vy = -vy;
+
+        bounce++;
+        }
+
+    if ( x <= r )
+        {
+        x = r;
+
+        vx = -vx;
+
+        bounce++;
+        }
+
+    if ( y >= txGetExtentY() - r )
+        {
+        y = txGetExtentY() - r;
+
+        vy = -vy;
+
+        bounce++;
+        }
+
+    if ( txGetPixel ( x, y ) == RGB (1, 1, 1) ) x = rand() % randX, y = rand() % randY;
+    }
+
+//-----------------------------------------------------------------------------
+
+void AllBallsPhysics ( CBall Array[], int size, double dt, int TableX1, int TableY1, int randX, int randY )
+    {
+    for ( int i = 0; i < size; i++ )
+        Array[i].BallPhysics( dt, TableX1, TableY1, randX, randY );
+    }
+
+//-----------------------------------------------------------------------------
+
+void BounceCounter ( CBall Array[], int size, int TableX1, int TopNum )
+    {
+    PrintBallArray ( Array, size, TableX1, TopNum );
+    }
+
+//-----------------------------------------------------------------------------
+
+void Selection ( CBall Array[], int size )
+    {
+    int interval = 0;
+
+    while ( interval < size )
+        {
+        int min = 0 + interval;
+        int i   = 1 + interval;
+
+        Swapper ( Array, interval, Searcher ( Array, size, min, i ) );
+
+        interval++;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+int Searcher ( CBall Array[], int size, int min, int i )
+    {
+    while ( i < size )
+        {
+        if ( Array[i].bounce > Array[min].bounce ) min = i;
+        i++;
+        }
+
+    return min;
+    }
+
+//-----------------------------------------------------------------------------
+
+void Swapper ( CBall Array[], int a, int b )
+    {
+    CBall agent = Array[a];
+    Array[a] = Array[b];
+    Array[b] = agent;
+    }
+
+//-----------------------------------------------------------------------------
+
+void PrintBallArray ( CBall Array[], int size, int TableX1, int TopNum )
+    {
+    txSetColor ( TX_BLACK, 3 );
+
+    txSelectFont ("Times New Roman", txGetExtentY()/(TopNum + 1)*1/3);
+    txDrawText ((txGetExtentX() - TableX1)/2 + TableX1, 0, txGetExtentX(), txGetExtentY()/(TopNum + 1), "Score");
+
+
+    txSelectFont ("Times New Roman", txGetExtentY()/(TopNum + 1)*3/3);
+    txLine( TableX1, 0, TableX1, txGetExtentY() );
+    txLine( (txGetExtentX() - TableX1)/2 + TableX1, 0, (txGetExtentX() - TableX1)/2 + TableX1, txGetExtentY() );
+
+    txDrawText (TableX1, 0, (txGetExtentX() - TableX1)/2 + TableX1, txGetExtentY()/(TopNum + 1), "#");
+
+    if ( txMouseX() >= TableX1 && txMouseX() <= txGetExtentX() )
+        {
+        COLORREF colorOn = TX_LIGHTCYAN;
+
+        int help = 1;
+        while ( help < TopNum + 1 )
+            {
+            COLORREF color0 = Array[help - 1].Scolor;
+
+
+            if (txMouseY() >= help*txGetExtentY()/(TopNum + 1) && txMouseY() <= (help + 1)*txGetExtentY()/(TopNum + 1) )
+                {
+                txSetFillColor ( colorOn );
+                txRectangle (TableX1, help*txGetExtentY()/(TopNum + 1), txGetExtentX(), (help + 1)*txGetExtentY()/(TopNum + 1) );
+
+                Array[help - 1].SFcolor = colorOn;
+                }
+
+            else Array[help - 1].SFcolor = Array[help - 1].Scolor;
+
+            help++;
+            }
+        }
+
+    for ( int i = 0; i < TopNum; i++)
+        {
+        char bounceStr[6] = "";
+        char Number[6] = "";
+
+        itoa ( Array[i].bounce, bounceStr, 10 );
+        itoa ( i + 1, Number, 10 );
+
+        txSetColor ( TX_BLACK, 3 );
+
+        txLine (TableX1, txGetExtentY()/(TopNum + 1) * (i + 1), txGetExtentX(), txGetExtentY()/(TopNum + 1) * (i + 1) );
+
+        txSetColor ( Array[i].Scolor, 2 );
+
+        txDrawText ( TableX1, txGetExtentY()/(TopNum + 1) * (i + 1), (txGetExtentX() - TableX1)/2 + TableX1,
+        txGetExtentY()/(TopNum + 1) * (i + 2), Number );
+
+        txDrawText ( (txGetExtentX() - TableX1)/2 + TableX1, txGetExtentY()/(TopNum + 1) * (i + 1), txGetExtentX(),
+        txGetExtentY()/(TopNum + 1) * (i + 2), bounceStr );
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
