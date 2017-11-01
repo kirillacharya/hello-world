@@ -1,5 +1,12 @@
-
 #include "TXLib.h"
+
+//-----------------------------------------------------------------------------
+
+int TopNum = 5;
+int TableX1 = 85*txGetExtentX()/100, TableY1 = txGetExtentY()/(TopNum + 1);
+int randX = txGetExtentX() - TableX1, randY = txGetExtentY();
+double dt = 0.1;
+const int Size = 100;
 
 //-----------------------------------------------------------------------------
 
@@ -7,8 +14,6 @@ class CBall
     {
     double x, y;
     double vx, vy;
-
-    int number;
 
     public:
 
@@ -23,7 +28,7 @@ class CBall
     CBall ();
 
     void DrawBall ();
-    void BallPhysics ( double dt, int TableX1, int TableY1, int randX, int randY );
+    void BallPhysics ( );
     };
 
 //-----------------------------------------------------------------------------
@@ -32,27 +37,36 @@ class CManager
     {
     public:
 
-    void MainCycle ( CBall Array[], int Size, int TopNum, int TableX1, int TableY1, int randX, int randY );
+    CBall Array [Size] = {};
+
+    void MainCycle ();
+
+    CManager ();
 
     private:
 
     int MomentSize;
 
-    void PrintBallArray ( CBall Array[], int TableX1, int TopNum );
-    void AllBallsDraw ( CBall Array[], int size );
-    void AllBallsPhysics ( CBall Array[], int size, double dt, int TableX1, int TableY1, int randX, int randY );
-    void BounceCounter ( CBall Array[], int TableX1, int TopNum );
-    void Selection ( CBall Array[], int size );
-    int Searcher ( CBall Array[], int size, int min, int i );
-    void Swapper ( CBall Array[], int a, int b );
-    void PrintBallArray ( CBall Array[], int size, int TableX1, int TopNum );
-    void SizePlus ( int MomentSize );
-    void SizeMinus ( int MomentSize );
+    void PrintBallArray ();
+    void AllBallsDraw ();
+    void AllBallsPhysics ();
+    void BounceCounter ( );
+    void SizePlus ();
+    void SizeMinus  ();
+    void Selection ();
+    int Searcher ( int min, int i );
+    void Swapper ( int a, int b );
     };
 
 //-----------------------------------------------------------------------------
 
 void Title ( int X1, int Y1, int X2, int Y2, COLORREF Tcolor );
+void Selection ( CBall Array[], int size );
+int Searcher ( CBall Array[], int size, int min, int i );
+void Swapper ( CBall Array[], int a, int b );
+void PrintBallArray ( CBall Array[], int size, int TableX1, int TopNum );
+
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 
@@ -60,17 +74,11 @@ int main()
     {
     txCreateWindow ( 1300, 700 );
 
-    const int Size = 100;
-    int TopNum = 5;
     int MomentSize = 10;
 
     CManager M1;
 
-
-    int TableX1 = 85*txGetExtentX()/100, TableY1 = txGetExtentY()/(TopNum + 1);
-    int randX = txGetExtentX() - TableX1, randY = txGetExtentY();
-
-    M1.MainCycle ( Array, Size, TopNum, TableX1, TableY1, randX, randY );
+    M1.MainCycle ();
 
     return 0;
     }
@@ -98,7 +106,9 @@ CBall::CBall ():
 //-----------------------------------------------------------------------------
 
 CManager::CManager ():
-    Array ({})
+
+    Array ({}),
+    MomentSize (10)
     {}
 
 //-----------------------------------------------------------------------------
@@ -113,7 +123,7 @@ void CBall::DrawBall ()
 
 //-----------------------------------------------------------------------------
 
-void CManager::AllBallsDraw ( CBall Array[], int MomentSize )
+void CManager::AllBallsDraw ( )
     {
     for ( int i = 0; i < MomentSize; i++ )
         Array[i].DrawBall();
@@ -121,7 +131,7 @@ void CManager::AllBallsDraw ( CBall Array[], int MomentSize )
 
 //-----------------------------------------------------------------------------
 
-void CBall::BallPhysics ( double dt, int TableX1, int TableY1, int randX, int randY )
+void CBall::BallPhysics ( )
     {
     x = x + vx * dt;
     y = y + vy * dt;
@@ -171,22 +181,22 @@ void CBall::BallPhysics ( double dt, int TableX1, int TableY1, int randX, int ra
 
 //-----------------------------------------------------------------------------
 
-void CManager::AllBallsPhysics ( CBall Array[], int MomentSize, double dt, int TableX1, int TableY1, int randX, int randY )
+void CManager::AllBallsPhysics ( )
     {
     for ( int i = 0; i < MomentSize; i++ )
-        Array[i].BallPhysics( dt, TableX1, TableY1, randX, randY );
+        Array[i].BallPhysics( );
     }
 
 //-----------------------------------------------------------------------------
 
-void CManager::BounceCounter ( CBall Array[], int TableX1, int TopNum )
+void CManager::BounceCounter ( )
     {
-    PrintBallArray ( Array, TableX1, TopNum );
+    PrintBallArray ( );
     }
 
 //-----------------------------------------------------------------------------
 
-void CManager::Selection ( CBall Array[], int MomentSize )
+void CManager::Selection ( )
     {
     int interval = 0;
 
@@ -195,7 +205,7 @@ void CManager::Selection ( CBall Array[], int MomentSize )
         int min = 0 + interval;
         int i   = 1 + interval;
 
-        Swapper ( Array, interval, Searcher ( Array, MomentSize, min, i ) );
+        Swapper ( interval, Searcher ( min, i ) );
 
         interval++;
         }
@@ -204,7 +214,7 @@ void CManager::Selection ( CBall Array[], int MomentSize )
 
 //-----------------------------------------------------------------------------
 
-int CManager::Searcher ( CBall Array[], int MomentSize, int min, int i )
+int CManager::Searcher ( int min, int i )
     {
     while ( i < MomentSize )
         {
@@ -217,7 +227,7 @@ int CManager::Searcher ( CBall Array[], int MomentSize, int min, int i )
 
 //-----------------------------------------------------------------------------
 
-void CManager::Swapper ( CBall Array[], int a, int b )
+void CManager::Swapper ( int a, int b )
     {
     CBall agent = Array[a];
     Array[a] = Array[b];
@@ -226,7 +236,7 @@ void CManager::Swapper ( CBall Array[], int a, int b )
 
 //-----------------------------------------------------------------------------
 
-void CManager::PrintBallArray ( CBall Array[], int TableX1, int TopNum )
+void CManager::PrintBallArray ( )
     {
     txSetColor ( TX_BLACK, 5 );
 
@@ -304,48 +314,48 @@ void Title ( int X1, int Y1, int X2, int Y2, COLORREF Tcolor )
 
 //-----------------------------------------------------------------------------
 
-void CManager::SizePlus ( int MomentSize )
+void CManager::SizePlus ( )
     {
     MomentSize++;
     }
 
 //-----------------------------------------------------------------------------
 
-void CManager::SizeMinus ( int MomentSize )
+void CManager::SizeMinus ( )
     {
     MomentSize--;
     }
 
 //-----------------------------------------------------------------------------
 
-void CManager::MainCycle ( CBall Array[], int Size, int TopNum, int TableX1, int TableY1, int randX, int randY )
+void CManager::MainCycle ( )
     {
-    HDC pooltable = txLoadImage ("pooltableWithHoles.bmp");
-    HDC Background = txLoadImage ("Background.bmp");
+    //HDC pooltable = txLoadImage ("pooltableWithHoles.bmp");
+    //HDC Background = txLoadImage ("Background.bmp");
 
     while ( !GetAsyncKeyState(VK_ESCAPE) )
         {
-        if ( GetAsyncKeyState ( VK_SPACE ) )  SizePlus ( MomentSize );
-        if ( GetAsyncKeyState ( VK_BACK ) )  SizeMinus ( MomentSize );
+        if ( GetAsyncKeyState ( VK_SPACE ) )  SizePlus ( );
+        if ( GetAsyncKeyState ( VK_BACK ) )  SizeMinus ( );
 
 
-        AllBallsDraw ( Array, Size );
-        AllBallsPhysics ( Array, Size, 0.01, TableX1, TableY1, randX, randY );
+        AllBallsDraw ( );
+        AllBallsPhysics ( );
 
-        Selection ( Array, Size );
-        BounceCounter ( Array, TableX1, TopNum );
+        Selection ( );
+        BounceCounter ( );
 
         txSetFillColor ( TX_WHITE );
         txSleep(10);
         txClear();
 
-        txBitBlt (txDC(), 0, 0, txGetExtentX(), txGetExtentY(), Background, 0, 0);
-        txBitBlt (txDC(), 0, TableY1, txGetExtentX(), txGetExtentY(), pooltable, 0, 0);
+        //txBitBlt (txDC(), 0, 0, txGetExtentX(), txGetExtentY(), Background, 0, 0);
+        //txBitBlt (txDC(), 0, TableY1, txGetExtentX(), txGetExtentY(), pooltable, 0, 0);
         Title ( 0, 0, TableX1,  TableY1, RGB ( 0, 0, 255 ) );
         }
 
-    txDeleteDC( pooltable );
-    txDeleteDC( Background );
+    //txDeleteDC( pooltable );
+    //txDeleteDC( Background );
     }
 
 //-----------------------------------------------------------------------------
