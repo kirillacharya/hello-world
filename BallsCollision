@@ -1,0 +1,687 @@
+
+#include "TXLib.h"
+#define GAKS GetAsyncKeyState
+
+//-----------------------------------------------------------------------------
+
+const int TopNum = 5;
+const int TableX1 = 85*1300/100, TableY1 = 700/(TopNum + 1);
+const int RandX = 1300 - TableX1, RandY = 700;
+const int Size = 100;
+
+const double DT = 0.005;
+
+//-----------------------------------------------------------------------------
+
+struct SVector
+    {
+    double x, y;    //projections
+    double cx, cy;  //centers
+    };
+
+//-----------------------------------------------------------------------------
+
+class CBall
+    {
+    public:
+
+    int r;
+    int rNew;
+
+    double x, y;
+
+    SVector velocity;
+
+    int bounce;
+
+    int red, green, blue;
+
+    COLORREF SFcolor;
+    COLORREF Scolor;
+    COLORREF VectorColor;
+
+    CBall ();
+
+    void DrawBall ();
+    void BallPhysics ();
+    };
+
+//-----------------------------------------------------------------------------
+
+class CManager
+    {
+    public:
+
+    CBall Array [Size] = {};
+
+    void MainCycle ();
+
+    CManager ();
+
+    void Collision  ( int GraphicalDeBug );
+    void ColPhysics ( int i, int j, SVector &NewPI, SVector &NewPJ, int GraphicalDeBug );
+
+    private:
+
+    int MomentSize;
+
+    void PrintBallArray ();
+    void AllBallsDraw ();
+    void AllBallsPhysics ();
+    void BounceCounter ();
+    void SizePlus ();
+    void SizeMinus  ();
+    void Selection ();
+    int Searcher ( int min, int i );
+    void Swapper ( int a, int b );
+    };
+
+//-----------------------------------------------------------------------------
+
+void Title                ( int X1, int Y1, int X2, int Y2, COLORREF Tcolor );
+void Selection            ( CBall Array[], int size );
+void PrintBallArray       ( CBall Array[], int size, int TableX1, int TopNum );
+double  Random            ( double min, int max );
+int DeBugAcceptance       ();
+
+void DrawVector           ( SVector a, COLORREF Color, int width, int Pause );
+void VectorMarker         ( SVector a );
+double  VectScalarProduct ( SVector a, SVector b );
+double  VectModule        ( SVector a );
+double  Lenght            ( SVector a, SVector b );
+SVector VectSum           ( SVector a, SVector b );
+SVector VectSubsract      ( SVector a, SVector b );
+SVector VectMult          ( SVector a, double Number );
+SVector VectDivision      ( SVector a, double Number );
+SVector VectNormalization ( SVector a );
+SVector VectorDots        ( double cx1, double cy1, double cx2, double cy2 );
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow ( 1300, 700 );
+
+    CManager Man1;
+
+    Man1.MainCycle ();
+
+    return 0;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::ColPhysics ( int i, int j, SVector &NewVI, SVector &NewVJ, int GraphicalDeBug )
+    {
+    //The Mechanism Of Collision [+Graphical Results]   P.S. Not Call Physics!
+
+    SVector Centres, NewN/*, NewT*/;                     //the basis vector n
+    SVector PI, PJ, NewPI, NewPJ;                        //vectors of old and impulses
+    SVector NewPIN, NewPJN, PIT, PJT, VectPIN, VectPJN;  //new, old projections(vectors), vectors OY
+    double PIN, PJN;                                     //projections of impulses on axis
+    int width = 5;
+
+    PI = VectMult ( Array[i].velocity, Array[i].r );     //the vectors of impulses
+    PJ = VectMult ( Array[j].velocity, Array[j].r );     //---//---
+
+    PI.cx = Array[i].x, PI.cy = Array[i].y;              //the centers of those vectors
+    PJ.cx = Array[j].x, PJ.cy = Array[j].y;              //---//---
+
+    Centres = VectorDots ( Array[i].x, Array[i].y, Array[j].x, Array[j].y ); //the vector of centers
+
+    NewN = VectNormalization ( Centres );                //the Basis Vector
+
+    PIN = VectScalarProduct (PI, NewN);                  //Projections on Basis
+    PJN = VectScalarProduct (PJ, NewN);                  //---//---
+
+    VectPIN = VectMult (NewN, PIN);                      //Vector of projections
+    VectPJN = VectMult (NewN, PJN);                      //---//---
+    VectPIN.cx = Array[i].x, VectPIN.cy = Array[i].y;
+    VectPJN.cx = Array[j].x, VectPJN.cy = Array[j].y;
+
+    PIT = VectSubsract ( PI, VectPIN );                  //Vector of projection on OY(OT)
+    PJT = VectSubsract ( PJ, VectPJN );                  //---//---
+    PIT.cx = Array[i].x, PIT.cy = Array[i].y;
+    PJT.cx = Array[j].x, PJT.cy = Array[j].y;
+
+    std::swap ( PIN, PJN );                              //swap of the vector projections on X
+
+    NewPIN = VectMult ( NewN, PIN );                     //New Projection Vector
+    NewPJN = VectMult ( NewN, PJN );                     //---//---
+    NewPIN.cx = Array[i].x, NewPIN.cy = Array[i].y;
+    NewPJN.cx = Array[j].x, NewPJN.cy = Array[j].y;
+
+    NewPI = VectSum ( NewPIN, PIT );                     //New impulses
+    NewPJ = VectSum ( NewPJN, PJT );                     //---//---
+    NewPI.cx = Array[i].x, NewPI.cy = Array[i].y;
+    NewPJ.cx = Array[j].x, NewPJ.cy = Array[j].y;
+
+    //////////////////////////////////////////////////////////////////
+
+    if  ( GraphicalDeBug == 1 )
+        {
+        DrawVector ( PI, Array[i].VectorColor, width, 1 );    //Draw impulses
+        DrawVector ( PJ, Array[j].VectorColor, width, 0 );    //---//---
+
+        DrawVector ( Centres, TX_BLACK, width, 0 );           //Draw Axis
+        txLine (Array[j].x, Array[j].y, Array[i].x, Array[i].y);
+
+        DrawVector ( VectPIN, TX_YELLOW, width, 1 );          //Draw Vector of projections
+        DrawVector ( VectPJN, TX_BLUE,   width, 1 );          //---//---
+
+        DrawVector ( PIT, TX_MAGENTA, width, 1 );             //Draw Vector of projections o OT(OY)
+        DrawVector ( PJT, TX_MAGENTA, width, 1 );
+
+        DrawVector ( NewPIN, TX_BLUE,   width, 1 );           //Draw New projection on ON(OX)
+        DrawVector ( NewPJN, TX_YELLOW, width, 1 );           //---//---
+
+        DrawVector ( NewPI, Array[i].VectorColor, width, 1 ); //Draw New Impulse
+        DrawVector ( NewPJ, Array[i].VectorColor, width, 1 ); //---//---
+
+        VectorMarker ( NewPI );                               //Recognition of the New Impulse
+        VectorMarker ( NewPJ );                               //---//---
+
+        getch();
+        }
+
+
+    //////////////////////////////////////////////////////////////////
+
+    NewVI = VectDivision ( NewPI,  Array[i].r );         //reabilitation of velocities
+    NewVJ = VectDivision ( NewPJ,  Array[j].r );         //---//---
+
+    Array[i].velocity = NewVI;
+    Array[j].velocity = NewVJ;
+    }
+
+//{----------------------------------------------------------------------------
+//! THE OPERATIONS WITH VECTORS
+//}----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+void DrawVector ( SVector a, COLORREF Color, int width, int Pause )
+    {
+    if ( Pause == 1 ) getch();                          //do you want to pause?
+    txSetColor ( Color, width );
+    txSetFillColor ( Color );
+    txLine ( a.cx, a.cy, a.cx + a.x*0.01, a.cy + a.y*0.01 );
+    //txLine ( a.cx + a.x*0.01, a.cy + a.y*0.01, a.cx + a.x*0.01 - 15, a.cy + a.y*0.01 - 5 );
+    //txLine ( a.cx + a.x*0.01, a.cy + a.y*0.01, a.cx + a.x*0.01 - 15, a.cy + a.y*0.01 + 5 );
+    txCircle (a.cx + a.x*0.01, a.cy + a.y*0.01, 5);
+    }
+
+//-----------------------------------------------------------------------------
+
+void VectorMarker ( SVector a )
+    {
+    COLORREF MarkerColor;
+    for ( int i = 0; i < 156; i += 4)
+        {
+        //txClear();
+        MarkerColor = RGB ( 100 + i, i, 200 + i);
+        DrawVector ( a, MarkerColor, i%10, 0 );
+        Title ( 0, 0, TableX1, TableY1, MarkerColor );
+        txSleep(0);
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+SVector VectorDots ( double cx1, double cy1, double cx2, double cy2 )
+    {
+    SVector v;
+
+    v.x = cx2 - cx1;
+    v.y = cy2 - cy1;
+
+    v.cx = cx1, v.cy = cy1;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+
+double VectModule ( SVector a )
+    {
+    double module;
+
+    module = sqrt (a.x*a.x + a.y*a.y);
+
+    return module;
+    }
+
+//-----------------------------------------------------------------------------
+
+double Lenght ( SVector a, SVector b )
+    {
+    double Lenght;
+
+    Lenght = sqrt ((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y));
+
+    return Lenght;
+    }
+//-----------------------------------------------------------------------------
+
+SVector VectNormalization ( SVector a )
+    {
+    SVector n;
+
+    n = VectDivision ( a, VectModule(a) );
+
+    return n;
+    }
+
+//-----------------------------------------------------------------------------
+
+double VectScalarProduct ( SVector a, SVector b )
+    {
+    double result;
+
+    result = a.x * b.x + a.y * b.y;
+
+    return result;
+    }
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+SVector VectSum ( SVector a, SVector b )
+    {
+    SVector v;
+
+    v.x = a.x + b.x;
+    v.y = a.y + b.y;
+
+    //v.cx = , v.cy =
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+
+SVector VectSubsract ( SVector a, SVector b )
+    {
+    SVector v;
+
+    v.x = a.x - b.x;
+    v.y = a.y - b.y;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+SVector VectMult ( SVector a, double Number )
+    {
+    SVector v;
+
+    v.x = a.x*Number;
+    v.y = a.y*Number;
+
+    //v.cx = a.cx, v.cy = a.cy;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+
+SVector VectDivision ( SVector a, double Number )
+    {
+    SVector v;
+
+    v.x = a.x/Number;
+    v.y = a.y/Number;
+
+    return v;
+    }
+
+//{----------------------------------------------------------------------------
+//! THE BALLS CLASS
+//}----------------------------------------------------------------------------
+
+CBall::CBall ():
+    r               (Random(30, 50)),
+    rNew            (r),
+    x               (Random(0 + rNew, TableX1 - rNew)),
+    y               (Random(0 + rNew, txGetExtentY() - rNew)),
+    velocity        ({ Random(50, 100), Random(50, 100), x, y }),
+    bounce          (0),
+    red             (rand()%255),
+    green           (rand()%255),
+    blue            (rand()%255),
+    SFcolor         ( RGB (red, green, blue)),
+    Scolor          (SFcolor),
+    VectorColor     ( RGB (255 - red, 255 - green, 255 - blue) )
+    {}
+
+//-----------------------------------------------------------------------------
+
+void CBall::DrawBall ()
+    {
+    txSetColor ( Scolor, 3 );
+    txSetFillColor ( SFcolor );
+
+    SVector P = VectMult ( velocity, r );
+    P.cx = x, P.cy = y;
+
+    txCircle ( x, y, rNew );
+
+    DrawVector ( P, VectorColor, 5, 0 );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CBall::BallPhysics ()
+    {
+    x = x + velocity.x * DT;
+    y = y + velocity.y * DT;
+
+    if ( x >= TableX1 - rNew )
+        {
+        x = TableX1 - rNew;
+
+        velocity.x = -velocity.x;
+
+        bounce++;
+        }
+
+    if ( y <= TableY1 + rNew )
+        {
+        y = TableY1 + rNew;
+
+        velocity.y = -velocity.y;
+
+        bounce++;
+        }
+
+    if ( x <= rNew )
+        {
+        x = rNew;
+
+        velocity.x = -velocity.x;
+
+        bounce++;
+        }
+
+    if ( y >= txGetExtentY() - rNew )
+        {
+        y = txGetExtentY() - rNew;
+
+        velocity.y = -velocity.y;
+
+        bounce++;
+        }
+
+    /*if ( txGetPixel ( x, y ) == RGB (1, 1, 1) )
+        {
+        x = rand() % RandX, y = rand() % RandY;
+        bounce++;
+        }       */
+    }
+
+//{----------------------------------------------------------------------------
+//! THE CLASS MANAGER
+//}----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+CManager::CManager ():
+
+    Array ({}),
+    MomentSize (4)    //the numbers of balls right now
+    {}
+
+//-----------------------------------------------------------------------------
+
+void CManager::MainCycle ()
+    {
+    HDC pooltable = txLoadImage ("pooltableWithHoles.bmp");
+    HDC Background = txLoadImage ("Background.bmp");
+
+    int GraphicalDeBug = DeBugAcceptance();
+
+    while ( !GAKS(VK_ESCAPE) )
+        {
+        Title ( 0, 0, TableX1, TableY1, RGB ( 0, 0, 255 ) );
+
+        if ( GAKS ( 'A' ) )      SizePlus ();
+        if ( GAKS ( 46 ) )  SizeMinus ();
+
+        AllBallsDraw ();
+        AllBallsPhysics ();
+
+        Collision( GraphicalDeBug );
+
+        Selection ();
+        BounceCounter ();
+
+        txSetFillColor ( TX_WHITE );
+        txSleep(10);
+        txClear();
+
+        txBitBlt (txDC(), 0, 0, txGetExtentX(), txGetExtentY(), Background, 0, 0);
+        txBitBlt (txDC(), 0, TableY1, txGetExtentX(), txGetExtentY(), pooltable, 0, 0);
+        }
+
+    txDeleteDC( pooltable );
+    txDeleteDC( Background );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::AllBallsDraw ()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        Array[i].DrawBall();
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::AllBallsPhysics ()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        Array[i].BallPhysics( );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::Collision ( int GraphicalDeBug )
+    {
+    SVector NewVI, NewVJ;
+
+    for ( int i = 0; i < MomentSize; i++ )
+        {
+        for ( int j = i + 1; j < MomentSize; j++ )
+            {
+            if ( sqrt ((Array[i].x - Array[j].x)*(Array[i].x - Array[j].x) + (Array[i].y - Array[j].y)*(Array[i].y - Array[j].y) )
+                    < Array[i].r + Array[j].r )
+                {
+                ColPhysics ( i, j, NewVI, NewVJ, GraphicalDeBug );
+                }
+
+            }
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::BounceCounter ()
+    {
+    PrintBallArray ();
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::Selection ()
+    {
+    int interval = 0;
+
+    while ( interval < MomentSize )
+        {
+        int min = 0 + interval;
+        int i   = 1 + interval;
+
+        Swapper ( interval, Searcher ( min, i ) );
+
+        interval++;
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+int CManager::Searcher ( int min, int i )
+    {
+    while ( i < MomentSize )
+        {
+        if ( Array[i].bounce > Array[min].bounce ) min = i;
+        i++;
+        }
+
+    return min;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::Swapper ( int a, int b )
+    {
+    CBall agent = Array[a];
+    Array[a] = Array[b];
+    Array[b] = agent;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::PrintBallArray ()
+    {
+    txSetColor ( TX_BLACK, 5 );
+
+    txSelectFont ("Times New Roman", txGetExtentY()/(TopNum + 1)*1/3);
+    txDrawText ((txGetExtentX() - TableX1)/2 + TableX1, 0, txGetExtentX(), txGetExtentY()/(TopNum + 1), "Score");
+
+
+    txSelectFont ("Times New Roman", txGetExtentY()/(TopNum + 1)*3/3);
+    txLine( TableX1, 0, TableX1, txGetExtentY() );
+    txLine( (txGetExtentX() - TableX1)/2 + TableX1, 0, (txGetExtentX() - TableX1)/2 + TableX1, txGetExtentY() );
+
+    txDrawText (TableX1, 0, (txGetExtentX() - TableX1)/2 + TableX1, txGetExtentY()/(TopNum + 1), "#");
+
+    if ( txMouseX() >= TableX1 && txMouseX() <= txGetExtentX() )
+        {
+        COLORREF colorOn = TX_LIGHTCYAN;
+
+        int help = 1;
+        while ( help < TopNum + 1 )
+            {
+            if (txMouseY() >= help*txGetExtentY()/(TopNum + 1) && txMouseY() <= (help + 1)*txGetExtentY()/(TopNum + 1) )
+                {
+                if ( txMouseButtons() == 1 )  Array[help - 1].rNew = 70;
+
+                txSetFillColor ( colorOn );
+                txRectangle (TableX1, help*txGetExtentY()/(TopNum + 1), txGetExtentX(), (help + 1)*txGetExtentY()/(TopNum + 1) );
+
+                Array[help - 1].SFcolor = colorOn;
+                }
+
+            else
+                {
+                Array[help - 1].SFcolor = Array[help - 1].Scolor;
+                Array[help - 1].rNew = Array[help - 1].r;
+                }
+
+            help++;
+            }
+        }
+
+    for ( int i = 0; i < TopNum; i++)
+        {
+        char bounceStr[6] = "";
+        char Number[6] = "";
+
+        itoa ( Array[i].bounce, bounceStr, 10 );
+        itoa ( i + 1, Number, 10 );
+
+        txSetColor ( TX_BLACK, 5 );
+
+        txLine (TableX1, txGetExtentY()/(TopNum + 1) * (i + 1), txGetExtentX(), txGetExtentY()/(TopNum + 1) * (i + 1) );
+
+        txSetColor ( Array[i].Scolor, 2 );
+
+        txDrawText ( TableX1, txGetExtentY()/(TopNum + 1) * (i + 1), (txGetExtentX() - TableX1)/2 + TableX1,
+        txGetExtentY()/(TopNum + 1) * (i + 2), Number );
+
+        txDrawText ( (txGetExtentX() - TableX1)/2 + TableX1, txGetExtentY()/(TopNum + 1) * (i + 1), txGetExtentX(),
+        txGetExtentY()/(TopNum + 1) * (i + 2), bounceStr );
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::SizePlus ()
+    {
+    if ( MomentSize <=  Size ) MomentSize++;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::SizeMinus ()
+    {
+    if ( MomentSize >= 0 ) MomentSize--;
+    }
+
+//{----------------------------------------------------------------------------
+//! OTHER ACTIONS
+//}----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+double Random ( double min, int max )
+    {
+    double ran = min + rand()%max;
+
+    return ran;
+    }
+
+//-----------------------------------------------------------------------------
+
+void Title ( int X1, int Y1, int X2, int Y2, COLORREF Tcolor )
+    {
+    txSetColor ( TX_BLACK, 5 );
+    txLine ( X1, Y2, X2, Y2 );
+
+    txSetColor ( Tcolor );
+    txSelectFont ("Times New Roman", (Y2 - Y1)*3/4);
+    txDrawText ( X1, Y1, X2, Y2, "POOL GAME" );
+    }
+
+//-----------------------------------------------------------------------------
+
+int DeBugAcceptance ()
+    {
+    HDC Preview = txLoadImage ("BallPreview.bmp");
+    HDC Instruction = txLoadImage ("Instruction.bmp");
+
+    txBitBlt (txDC(), 0, 0, txGetExtentX(), txGetExtentY(), Preview, 0, 0);
+
+    while ( !GAKS(VK_SPACE))
+        {
+        if ( GAKS(VK_BACK) )
+            {
+            return 0;
+            }
+        }
+
+    txBitBlt (txDC(), 0, 0, txGetExtentX(), txGetExtentY(), Instruction, 0, 0);
+
+    getch();
+    txSleep(15000);
+
+    txDeleteDC ( Preview );
+    txDeleteDC ( Instruction );
+
+    return 1;
+    }
