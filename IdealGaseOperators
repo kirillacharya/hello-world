@@ -1,0 +1,684 @@
+
+#include "TXLib.h"
+#define GAKS GetAsyncKeyState
+
+//-----------------------------------------------------------------------------
+
+const double PERX = GetSystemMetrics (SM_CXSCREEN)*100/100/100, PERY = GetSystemMetrics (SM_CYSCREEN)*100/100/100;
+
+const int LWX = 0, LWY = 0, RWX = PERY*100, RWY = PERY*100;
+
+const int Size = 1000;
+
+const double DT = 0.01;
+
+const double NewKBoltz = 1.38;
+
+//-----------------------------------------------------------------------------
+
+struct SVector
+    {
+    double x, y;    //projections
+    double cx, cy;  //centers
+    };
+
+//-----------------------------------------------------------------------------
+
+class CBall
+    {
+    public:
+
+    int r;
+    int rNew;
+
+    double x, y;
+
+    SVector velocity;
+
+    COLORREF SFcolor;
+    COLORREF Scolor;
+
+    double AllVelocity;
+
+    CBall ();
+
+    void DrawBall ();
+    void BallPhysics ( double *PistonYU, double *PistonYD );
+    };
+
+//-----------------------------------------------------------------------------
+
+class CManager
+    {
+    public:
+
+    CBall Array [Size] = {};
+
+    void MainCycle ();
+
+    CManager ();
+
+    void Collision  ();
+    void ColPhysics ( int i, int j, SVector &NewPI, SVector &NewPJ );
+
+    double Temperature, Pressure, Volume;
+
+    double PistonWidth, PistonYU, PistonYD;
+
+    COLORREF AllColor;
+
+    double Mass;
+
+    private:
+
+    int MomentSize;
+
+    void VesselAndPiston ();
+    void Table ();
+
+    void AllBallsDraw ();
+    void AllBallsPhysics ();
+    void BounceCounter ();
+    void SizePlus ();
+    void SizeMinus  ();
+    void Selection ();
+    int Searcher ( int min, int i );
+    void Swapper ( int a, int b );
+
+    void AccurateColTime ( int i, int j );
+
+    void CTemperature ();
+    void CPressure ();
+
+    void VelPlus();
+    void VelMinus();
+
+    double AverageVelocitySquared ();
+
+    void Calculations ();
+    };
+
+//-----------------------------------------------------------------------------
+
+void Title                ( int X1, int Y1, int X2, int Y2, COLORREF Tcolor );
+double  Random            ( double min, int max );
+
+double  operator *=       ( SVector a, SVector b );
+double  VectModule        ( SVector a );
+double  Lenght            ( SVector a, SVector b );
+SVector operator +        ( SVector a, SVector b );
+SVector operator -        ( SVector a, SVector b );
+SVector operator *        ( SVector a, double Number );
+SVector operator /        ( SVector a, double Number );
+SVector operator !        ( SVector a );
+SVector VectorDots        ( double cx1, double cy1, double cx2, double cy2 );
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow ( PERX*100, PERY*100 );
+
+    CManager Man1;
+
+    Man1.MainCycle ();
+
+    return 0;
+    }
+
+//{----------------------------------------------------------------------------
+//! THE OPERATIONS WITH VECTORS
+//}----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+void DrawVector ( SVector a, COLORREF Color, int width, int Pause )
+    {
+    if ( Pause == 1 ) getch();                          //do you want to pause?
+    txSetColor ( Color, width );
+    txSetFillColor ( Color );
+    txLine ( a.cx, a.cy, a.cx + a.x*0.01, a.cy + a.y*0.01 );
+    txCircle (a.cx + a.x*0.01, a.cy + a.y*0.01, 5);
+    }
+
+//-----------------------------------------------------------------------------
+
+SVector VectorDots ( double cx1, double cy1, double cx2, double cy2 )
+    {
+    SVector v;
+
+    v.x = cx2 - cx1;
+    v.y = cy2 - cy1;
+
+    v.cx = cx1, v.cy = cy1;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+
+double VectModule ( SVector a )
+    {
+    double module;
+
+    module = sqrt (a.x*a.x + a.y*a.y);
+
+    return module;
+    }
+
+//-----------------------------------------------------------------------------
+
+double Lenght ( SVector a, SVector b )
+    {
+    double Lenght;
+
+    Lenght = sqrt ((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y));
+
+    return Lenght;
+    }
+//-----------------------------------------------------------------------------
+
+SVector operator ! ( SVector a )
+    {
+    SVector n;
+
+    n =  a / VectModule(a);
+
+    return n;
+    }
+
+//-----------------------------------------------------------------------------
+
+double operator *= ( SVector a, SVector b )
+    {
+    double result;
+
+    result = a.x * b.x + a.y * b.y;
+
+    return result;
+    }
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+SVector operator + ( SVector a, SVector b )
+    {
+    SVector v;
+
+    v.x = a.x + b.x;
+    v.y = a.y + b.y;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+
+SVector operator - ( SVector a, SVector b )
+    {
+    SVector v;
+
+    v.x = a.x - b.x;
+    v.y = a.y - b.y;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+SVector operator * ( SVector a, double Number )
+    {
+    SVector v;
+
+    v.x = a.x*Number;
+    v.y = a.y*Number;
+
+    //v.cx = a.cx, v.cy = a.cy;
+
+    return v;
+    }
+
+//-----------------------------------------------------------------------------
+
+SVector operator / ( SVector a, double Number )
+    {
+    SVector v;
+
+    v.x = a.x/Number;
+    v.y = a.y/Number;
+
+    return v;
+    }
+
+//{----------------------------------------------------------------------------
+//! THE BALLS CLASS
+//}----------------------------------------------------------------------------
+
+CBall::CBall ():
+    r               (PERX),
+    rNew            (r),
+    x               (Random(rNew, RWX - rNew)),
+    y               (RWY - rNew),
+    velocity        ({ Random(100, 150), Random(120, 150), x, y }),
+    SFcolor         ( RGB (255, 0, 0) ),
+    Scolor          (SFcolor),
+    AllVelocity     ( velocity.x*velocity.x + velocity.y*velocity.y )
+    {}
+
+//-----------------------------------------------------------------------------
+
+void CBall::DrawBall ()
+    {
+    txSetColor ( Scolor, 3 );
+    txSetFillColor ( SFcolor );
+
+    SVector P = velocity * r;
+    P.cx = x, P.cy = y;
+
+    txCircle ( x, y, rNew );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CBall::BallPhysics ( double *PistonYU, double *PistonYD )
+    {
+    x = x + velocity.x * DT;
+    y = y + velocity.y * DT;
+
+    if ( x >= RWX - rNew )
+        {
+        x = RWX - rNew;
+
+        velocity.x = -velocity.x;
+        }
+
+    if ( y <= rNew )
+        {
+        y = rNew;
+
+        velocity.y = -velocity.y;
+        }
+
+    if ( x <= rNew )
+        {
+        x = rNew;
+
+        velocity.x = -velocity.x;
+        }
+
+    if ( y >= RWY - rNew )
+        {
+        y = txGetExtentY() - rNew;
+
+        velocity.y = -velocity.y;
+        }
+
+    /*if ( y + rNew >= *PistonYU )
+        {
+        y = *PistonYU - rNew;
+
+        velocity.y = -velocity.y;
+        }   */
+
+    if ( y - rNew <= *PistonYD )
+        {
+        y = *PistonYD + rNew;
+
+        velocity.y = -(velocity.y - velocity.y/20);
+
+        *PistonYD = *PistonYD - ((velocity.y/20)*1/0.5)*DT;
+        }
+    }
+
+
+//-----------------------------------------------------------------------------
+
+void CManager::VelPlus()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        {
+        if (Array[i].velocity.x >= 0) Array[i].velocity.x += 2;
+        else Array[i].velocity.x -= 2;
+
+        if (Array[i].velocity.y >= 0) Array[i].velocity.y += 2;
+        else Array[i].velocity.y -= 2;
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::VelMinus()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        {
+        if (Array[i].velocity.x >= 0) Array[i].velocity.x -= 2;
+        else Array[i].velocity.x += 2;
+
+        if (Array[i].velocity.y >= 0) Array[i].velocity.y -= 2;
+        else Array[i].velocity.y += 2;
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+CManager::CManager ():
+
+    Array ({}),
+    Temperature (0),
+    Pressure (0),
+    Volume(0),
+    PistonWidth(PERY*10),
+    PistonYU (PERY*30),
+    PistonYD (PistonYU + PistonWidth),
+    AllColor  (RGB ( 0, 255, 255 )),
+    Mass (1),
+    MomentSize (10)
+    {}
+
+//-----------------------------------------------------------------------------
+
+void CManager::ColPhysics ( int i, int j, SVector &NewVI, SVector &NewVJ )
+    {
+    //The Mechanism Of Collision [+Graphical Results]   P.S. Not Call Physics!
+
+    SVector Centres, NewN/*, NewT*/;                     //the basis vector n
+    SVector PI, PJ, NewPI, NewPJ;                        //vectors of old and impulses
+    SVector NewPIN, NewPJN, PIT, PJT, VectPIN, VectPJN;  //new, old projections(vectors), vectors OY
+    double PIN, PJN;                                     //projections of impulses on axis
+    int width = 5;
+
+    PI = Array[i].velocity * Array[i].r;     //the vectors of impulses
+    PJ = Array[j].velocity * Array[j].r;     //---//---
+
+    PI.cx = Array[i].x, PI.cy = Array[i].y;              //the centers of those vectors
+    PJ.cx = Array[j].x, PJ.cy = Array[j].y;              //---//---
+
+    Centres = VectorDots ( Array[i].x, Array[i].y, Array[j].x, Array[j].y ); //the vector of centers
+
+    NewN =  ! Centres;                //the Basis Vector
+
+    PIN = PI *= NewN;                  //Projections on Basis
+    PJN = PJ *= NewN;                  //---//---
+
+    VectPIN = NewN * PIN;                      //Vector of projections
+    VectPJN = NewN * PJN;                      //---//---
+    VectPIN.cx = Array[i].x, VectPIN.cy = Array[i].y;
+    VectPJN.cx = Array[j].x, VectPJN.cy = Array[j].y;
+
+    PIT = PI - VectPIN;                  //Vector of projection on OY(OT)
+    PJT = PJ - VectPJN;                  //---//---
+    PIT.cx = Array[i].x, PIT.cy = Array[i].y;
+    PJT.cx = Array[j].x, PJT.cy = Array[j].y;
+
+    std::swap ( PIN, PJN );                              //swap of the vector projections on X
+
+    NewPIN = NewN * PIN;                     //New Projection Vector
+    NewPJN = NewN * PJN;                     //---//---
+    NewPIN.cx = Array[i].x, NewPIN.cy = Array[i].y;
+    NewPJN.cx = Array[j].x, NewPJN.cy = Array[j].y;
+
+    NewPI = NewPIN + PIT;                     //New impulses
+    NewPJ = NewPJN + PJT;                     //---//---
+    NewPI.cx = Array[i].x, NewPI.cy = Array[i].y;
+    NewPJ.cx = Array[j].x, NewPJ.cy = Array[j].y;
+
+    NewVI = NewPI / Array[i].r;         //reabilitation of velocities
+    NewVJ = NewPJ / Array[j].r;         //---//---
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::MainCycle ()
+    {
+    while ( !GAKS(VK_ESCAPE) )
+        {
+        txSetFillColor ( TX_BLACK );
+        txClear();
+
+        VesselAndPiston ();
+        Table ();
+
+        Calculations();
+
+        if ( GAKS ( 'A' ) )      SizePlus ();
+        if ( GAKS ( 46 ) )       SizeMinus ();
+
+        if ( GAKS ( 'W' ) )      VelPlus();
+        if ( GAKS ( 'S' ) )      VelMinus();
+
+
+        AllBallsDraw ();
+        AllBallsPhysics ();
+
+        Collision();
+
+        txSleep(10);
+        //txClear();
+        }
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::AllBallsDraw ()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        Array[i].DrawBall();
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::AllBallsPhysics ()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        Array[i].BallPhysics( &PistonYU, &PistonYD );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::Collision ()
+    {
+    for ( int i = 0; i < MomentSize; i++ )
+        {
+        for ( int j = i + 1; j < MomentSize; j++ )
+            {
+            AccurateColTime ( i, j );
+            }
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::AccurateColTime ( int i, int j )
+    {
+    SVector NewVI, NewVJ;
+    double T;
+
+    double dx = (Array[j].x - Array[i].x), dy = (Array[j].y - Array[i].y);
+    double dvx = (Array[j].velocity.x - Array[i].velocity.x), dvy = (Array[j].velocity.y - Array[i].velocity.y);
+
+    double R = Array[i].r + Array[j].r;
+
+    double Disc = ((dx*dvx + dy*dvy)*(dx*dvx + dy*dvy) - (dvx*dvx + dvy*dvy)*(dx*dx + dy*dy - R*R));
+
+    if (Disc >= 0)
+        {
+        double sqrtDisc = sqrt(Disc);
+
+        double T1 = (-(dx*dvx + dy*dvy) + sqrtDisc)/(dvx*dvx + dvy*dvy);
+        double T2 = (-(dx*dvx + dy*dvy) - sqrtDisc)/(dvx*dvx + dvy*dvy);
+
+        if ( T1 < T2 ) T = T1;
+        else T = T2;
+
+        if ( T < DT && T > 0 )
+            {
+            Array[i].x = Array[i].x + Array[i].velocity.x*T;
+            Array[i].y = Array[i].y + Array[i].velocity.y*T;
+
+            Array[j].x = Array[j].x + Array[j].velocity.x*T;
+            Array[j].y = Array[j].y + Array[j].velocity.y*T;
+
+            ColPhysics ( i, j, NewVI, NewVJ );
+
+            Array[i].velocity = NewVI;
+            Array[j].velocity = NewVJ;
+
+            Array[i].x = Array[i].x + Array[i].velocity.x*(DT-T);
+            Array[i].y = Array[i].y + Array[i].velocity.y*(DT-T);
+
+            Array[j].x = Array[j].x + Array[j].velocity.x*(DT-T);
+            Array[j].y = Array[j].y + Array[j].velocity.y*(DT-T);
+            }
+        }
+    }
+
+//{----------------------------------------------------------------------------
+//!  IDEAL GASE CALCULATIONS
+//}----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+double CManager::AverageVelocitySquared ()
+    {
+    double VelocitySum = 0, VelocitySum0 = 0, AverageVelocity = 0;
+    for ( int i = 0; i < MomentSize; i++ )
+        {
+        Array[i].AllVelocity = (Array[i].velocity.x*Array[i].velocity.x + Array[i].velocity.y*Array[i].velocity.y );
+        VelocitySum = VelocitySum0 + Array[i].AllVelocity;
+        VelocitySum0 = VelocitySum;
+        }
+
+    assert ( MomentSize > 0 );
+
+    AverageVelocity = VelocitySum0/MomentSize;
+
+    return AverageVelocity;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::Calculations ()
+    {
+    /*
+    NewX = Alpha*RealX
+    NewTime = Beta*RealTime                Beta = 1; => Alpha = 1; Gamma = 10^23; Phi = 10^-23;
+    NewM = Gamma*RealM
+    NewN = Phi*RealN                        1000 px = 10^-8 meters
+    Newn = (Phi/Alpha^3) * Realn
+    NewKBoltz = Gamma*KBoltz
+    NewV = (Alpha/Beta)*RealV -- RealV = NewV => Alpha = Beta
+
+    Pressure = (1/3)*Realn*RealM*V^2
+
+    NewTemp = (NewM * V^2)/3*NewKBoltz = (Gamma*RealM*V^2)/3*Gamma*RealKBoltz = RealTemp
+    */
+
+
+    //TEMPERATURE
+
+    Temperature = (Mass*(AverageVelocitySquared()))/(3*NewKBoltz);
+
+    //PRESSURE
+
+    double NewVolume0, NewVolume, NewConcentr;
+
+    NewVolume0 = pow ( (RWY - LWY), 3 );
+
+    NewVolume = NewVolume0 * (((RWY - LWY) - PistonYD)/(RWY - LWY));
+
+    NewConcentr = (MomentSize/NewVolume);
+
+    Pressure = 0.33*Mass*(AverageVelocitySquared())*NewConcentr*10000;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::VesselAndPiston ()
+    {
+    txSetColor ( AllColor, 5 );
+
+    txRectangle ( LWX, LWY, RWX, RWY );
+
+    PistonYU = PistonYD - PistonWidth;
+
+    if ( GAKS ( VK_UP )   && PistonYU > LWY ) PistonYD -= 2;
+    if ( GAKS ( VK_DOWN ) && PistonYD < RWY ) PistonYD += 2;
+
+    txRectangle ( LWX, PistonYU, RWX, PistonYD );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::Table ()
+    {
+    txSelectFont ( "Arial", PERY*10 );
+
+    for ( int i = 0; i < 7; i++ )
+    txLine ( RWX, PERY*10*i, PERX*100, PERY*10*i );
+
+    txLine ( (PERX*100 + RWX)/2, PERY*10, (PERX*100 + RWX)/2, PERY*60 );
+
+    txDrawText ( RWX, 0, PERX*100, PERY*10, "THE IDEAL GASE" );
+
+    txSelectFont ( "Arial", PERY*8 );
+
+    txDrawText ( RWX, PERY*10, (PERX*100 + RWX)/2, PERY*20, "PHYSICAL VALUE" );
+
+    txDrawText ( RWX, PERY*20, (PERX*100 + RWX)/2, PERY*30, "MOL. NUMBER" );
+    txDrawText ( RWX, PERY*30, (PERX*100 + RWX)/2, PERY*40, "TEMPERATURE" );
+    txDrawText ( RWX, PERY*40, (PERX*100 + RWX)/2, PERY*50, "VOLUME" );
+    txDrawText ( RWX, PERY*50, (PERX*100 + RWX)/2, PERY*60, "PRESSURE" );
+
+    txDrawText ( (PERX*100 + RWX)/2, PERY*10, PERX*100, PERY*20, "MAGNITUDE" );
+
+    char Number[6] = "";
+    itoa ( MomentSize, Number, 10 );
+    txDrawText ( (PERX*100 + RWX)/2, PERY*20, PERX*100, PERY*30, Number );
+
+    char TemperatureStr[6] = "";
+    int  RTemperature = ROUND ( Temperature );
+    itoa ( RTemperature, TemperatureStr, 10 );
+    txDrawText ( (PERX*100 + RWX)/2, PERY*30, PERX*100, PERY*40, TemperatureStr );
+
+    char VolumeStr[6] = "";
+    int  RVolume = ROUND ( Volume );
+    itoa ( RVolume, VolumeStr, 10 );
+    txDrawText ( (PERX*100 + RWX)/2, PERY*40, PERX*100, PERY*50, VolumeStr );
+
+    char PressureStr[6] = "";
+    int  RPressure = ROUND ( Pressure );
+    itoa ( RPressure, PressureStr, 10 );
+    txDrawText ( (PERX*100 + RWX)/2, PERY*50, PERX*100, PERY*60, PressureStr );
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::SizePlus ()
+    {
+    if ( MomentSize <=  Size ) MomentSize++;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CManager::SizeMinus ()
+    {
+    if ( MomentSize >= 0 ) MomentSize--;
+    }
+
+//{----------------------------------------------------------------------------
+//! OTHER ACTIONS
+//}----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+double Random ( double min, int max )
+    {
+    double ran = min + rand()%max;
+
+    return ran;
+    }
+
+//-----------------------------------------------------------------------------
