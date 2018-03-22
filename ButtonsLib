@@ -1,0 +1,184 @@
+
+//-----------------------------------------------------------------------------
+
+#include "TXLib.h"
+
+//-----------------------------------------------------------------------------
+
+const int BS_NONE      = 0,
+          BS_PRESSED   = 1,
+          BS_MOUSEOVER = 2;
+
+
+//{----------------------------------------------------------------------------
+//!
+//}----------------------------------------------------------------------------
+
+class CButton
+    {
+    public:
+
+    int x_, y_;
+    int SizeX_, SizeY_;
+
+    int FrameSize_;
+
+    const char* Text_;
+    const char* HelpText_;
+
+    COLORREF FrameColor_;
+    COLORREF ButtonColor_;
+    COLORREF TextColor_;
+
+    const char* Font_;
+
+    int TextSize_;
+
+    int Status_;
+
+    void (*Func_)();
+
+    //------------------
+
+    CButton(int x, int y, int SizeX, int SizeY, int FrameSize, const char* Text, const char* HelpText,
+                    COLORREF FrameColor, COLORREF ButtonColor, void (*Func_)() );
+
+    void ButtonInit ();
+    void ButtonDraw ();
+
+    void ButtonTest  ();
+    };
+
+//-----------------------------------------------------------------------------
+
+class CBData
+    {
+    public:
+
+    std::vector <CButton*> ButtAll;
+
+    void AllButtonsDraw();
+    void AllButtonsTest();
+
+    void Run();
+
+    CBData();
+    };
+
+//-----------------------------------------------------------------------------
+
+void Hello ();
+
+
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow (800, 600);
+
+    CButton FirstButton (200, 200, 200, 200, 5, "Hello", "Hi", TX_RED, TX_LIGHTGREEN, Hello );
+
+    FirstButton.ButtonDraw ();
+
+    //CBData One;
+
+    //One.ButtAll = {}
+
+    /*for (!GetAsyncKeyState(VK_ESCAPE))
+        {
+        }   */
+
+    return 0;
+    }
+
+//-----------------------------------------------------------------------------
+
+void Hello ()
+    {
+    printf ("hellllllloooo");
+    }
+
+//-----------------------------------------------------------------------------
+
+CButton::CButton ( int x, int y, int SizeX, int SizeY, int FrameSize, const char* Text, const char* HelpText,
+                    COLORREF FrameColor, COLORREF ButtonColor, void (*Func)() ):
+    x_                   (x),
+    y_                   (y),
+    SizeX_               (SizeX),
+    SizeY_               (SizeY),
+    FrameSize_           (FrameSize),
+    Text_                (Text),
+    HelpText_            (HelpText),
+    FrameColor_          (FrameColor),
+    ButtonColor_         (ButtonColor),
+    Func_                (Func),
+    Status_              (BS_NONE),
+
+    TextColor_           (FrameColor),
+    Font_                ("Arial"),
+    TextSize_            (SizeY/2)
+    {}
+
+//-----------------------------------------------------------------------------
+
+void CButton::ButtonDraw ()
+    {
+    txSetColor (FrameColor_, FrameSize_);
+    txSetFillColor (ButtonColor_);
+
+    int Expander = ( Status_ == BS_MOUSEOVER ) ? 10 : 0;
+
+    txRectangle (x_ - Expander, y_ - Expander, x_ + SizeX_ + Expander, y_ + SizeY_ + Expander);
+
+    txSetFillColor (TextColor_);
+
+    txFontExist (Font_);
+    txSelectFont (Font_, 100);
+
+    txDrawText (x_, y_, x_ + SizeX_, y_ + SizeY_, Text_);
+    }
+
+//-----------------------------------------------------------------------------
+
+void CButton::ButtonTest ()
+    {
+    int mx = txMouseX(), my = txMouseY();
+
+    if ( x_ <= mx && mx <= x_ + SizeX_ && y_ <= my && my <= y_ + SizeY_ )
+        {
+        Status_ = BS_MOUSEOVER;
+
+        if ( txMouseButtons() == 1)
+            {
+            Status_ = BS_PRESSED;
+            }
+        }
+
+    else Status_ = BS_NONE;
+    }
+
+//-----------------------------------------------------------------------------
+
+void CBData::AllButtonsDraw ()
+    {
+    for (unsigned int i = 0; i < ButtAll.size(); i++)
+        (ButtAll[i])->ButtonDraw();
+    }
+
+//-----------------------------------------------------------------------------
+
+void CBData::AllButtonsTest ()
+    {
+    for (unsigned int i = 0; i < ButtAll.size(); i++)
+        {
+        (ButtAll[i])->ButtonTest();
+
+        if ((ButtAll[i])->Status_ == BS_PRESSED)
+            {
+            (ButtAll[i])->Func_();
+            }
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
