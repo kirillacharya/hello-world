@@ -1,0 +1,559 @@
+#include "TXLib.h"
+
+//-----------------------------------------------------------------------------
+
+COLORREF COLOR = TX_BLACK;
+int R = 25;
+const double SX = GetSystemMetrics (SM_CXSCREEN);
+const double SY = GetSystemMetrics (SM_CYSCREEN);
+
+//-----------------------------------------------------------------------------
+
+const int BS_NONE      = 0,
+          BS_MOUSEOVER = 1,                         //MOUSE POSOTIONS
+          BS_PRESSED   = 2;
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+
+class AbstractWindow                                //PARENTAL CLASS
+    {
+    public:
+
+    int x_, y_;
+    int SizeX_, SizeY_;
+
+    int Status_;
+
+    AbstractWindow ();
+    AbstractWindow ( int x, int y, int SizeX, int SizeY, int Status );
+
+    int HitTest ();                                 //NORMAL FUNCTIONS
+
+
+    virtual void onClick ();
+    virtual void Draw ();                           //VIRTUAL FUNCTIONS
+    };
+
+//-----------------------------------------------------------------------------
+
+class Button : public AbstractWindow
+    {
+    public:
+
+    void (*Func_)(Button*);
+
+    int FrameSize_;                                 //TEXT BUTTON
+
+    const char* Text_;
+    const char* HelpText_;
+
+    COLORREF FrameColor_, ButtonColor_;
+
+    Button (int x, int y, int SizeX, int SizeY, int Status, void (*Func)(Button*), int FrameSize, const char* Text,
+                 COLORREF FrameColor, COLORREF ButtonColor);
+
+    virtual void Draw () override;
+    virtual void onClick () override;
+
+
+    void SetColor();
+    };
+
+//-----------------------------------------------------------------------------
+
+class AbstractInst
+    {
+    public:
+    virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY );
+    };
+
+//-----------------------------------------------------------------------------
+
+class CircleInst : public AbstractInst
+    {
+    public:
+    virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY ) override;
+    };
+
+//-----------------------------------------------------------------------------
+
+class LineInst : public AbstractInst
+    {
+    public:
+    virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY ) override;
+    };
+
+//-----------------------------------------------------------------------------
+
+class RectangleInst : public AbstractInst
+    {
+    public:
+    virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY ) override;
+    };
+
+//-----------------------------------------------------------------------------
+
+class SprayInst : public AbstractInst
+    {
+    public:
+    virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY ) override;
+    };
+
+//-----------------------------------------------------------------------------
+
+class Canvas : public AbstractWindow
+    {
+    public:
+
+    void (*Func_)();
+
+    AbstractInst *Inst_;
+
+    COLORREF CanvasColor_;
+
+    Canvas (int x, int y, int SizeX, int SizeY, int Status, void (*Func)(), AbstractInst *Inst, COLORREF CanvasColor);
+
+    void ChangeInst (AbstractInst *Inst);
+
+    virtual void Draw () override;
+    virtual void onClick () override;
+    };
+
+//-----------------------------------------------------------------------------
+
+class InstButton : public AbstractWindow
+    {
+    public:
+
+    COLORREF Color_;
+    COLORREF FontColor_;
+
+    const char* Text_;
+
+    AbstractInst *Instrument_;
+    Canvas *canvas_;
+
+    virtual void Draw () override;
+    virtual void onClick () override;
+
+    InstButton ( int x, int y, int SizeX, int SizeY, int Status, COLORREF Color, const char *Text,
+                 COLORREF FontColor, AbstractInst *Instrument, Canvas *canvas );
+    };
+
+
+//-----------------------------------------------------------------------------
+
+class ARRManager
+    {
+    public:
+
+    int Size = 10;
+
+    std::vector <AbstractWindow*> ButtAll;
+
+    void AllButtonsDraw();
+    void AllButtonsHitTest();
+
+    void Run();
+    };
+
+//-----------------------------------------------------------------------------
+
+void MouseDraw ();
+void SetColor (Button *b);
+void RPLUS (Button *b);
+void RMINUS (Button *b);
+
+int Random(int left, int right);
+
+//-----------------------------------------------------------------------------
+
+int main()
+    {
+    txCreateWindow (1200, 650);
+
+    const double PX = (txGetExtentX()/100);
+    const double PY = (txGetExtentY()/100);
+
+    CircleInst CI1;
+    RectangleInst RI1;
+    LineInst LI1;
+    SprayInst SI1;
+
+    Canvas TheCanvas  (150, 120, 900, 520, BS_NONE, MouseDraw, &RI1, TX_WHITE);
+
+    Button red        (150, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(255,   0,   0));
+    Button yellow     (250, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(255, 255,   0));
+    Button orange     (350, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(255,  79,   0));
+    Button green      (450, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(  0, 255,   0));
+    Button blue       (550, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(  0,   0, 255));
+    Button cyan       (650, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(  0, 255, 255));
+    Button magenta    (750, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(205,   0, 205));
+    Button black      (850, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(  0,   0,   0));
+    Button white      (950, 0, 100, 100, BS_NONE, SetColor, 5, "", TX_RED, RGB(255, 255, 255));
+
+    Button Rplus      (1070, 120, 130, 130, BS_NONE, RPLUS,  5, "+", TX_RED, RGB(255, 255, 255));
+    Button Rminus     (1070, 250, 130, 130, BS_NONE, RMINUS, 5, "-", TX_RED, RGB(255, 255, 255));
+
+    InstButton Circle    (0, 120, 130, 130, BS_NONE, RGB(165,   60,   90), "CIRCLE",    RGB(0,   255,   255), &CI1, &TheCanvas);
+    InstButton Rectangle (0, 250, 130, 130, BS_NONE, RGB(60,   165,   90), "RECT.",     RGB(250,   10,   200), &RI1, &TheCanvas);
+    InstButton Line      (0, 380, 130, 130, BS_NONE, RGB(90,   60,   165), "LINE",      RGB(255,   190,   0), &LI1, &TheCanvas);
+    InstButton Spray     (0, 510, 130, 130, BS_NONE, RGB(90,   90,    90), "SPRAY",     RGB(255,   0,   0), &SI1, &TheCanvas);
+
+
+    AbstractWindow* Array[] = {&TheCanvas, &red, &yellow, &orange, &green, &blue, &cyan, &magenta, &black, &white,
+                                &Circle, &Rectangle, &Line, &Spray, &Rplus, &Rminus};
+
+    TheCanvas.Draw();
+
+    while (!GetAsyncKeyState (VK_ESCAPE))
+        {
+        //txSetFillColor (TX_BLACK);
+        //txClear();
+
+        if (GetAsyncKeyState(VK_UP)) TheCanvas.Draw();
+
+        for ( int i = 0; i < sizearr(Array); i++ )
+            {
+            if (i != 0) Array[i]->Draw();
+            if (Array[i]->HitTest() == BS_PRESSED) Array[i]->onClick();
+            }
+
+        txSleep(0);
+        }
+
+    return 0;
+    }
+
+//-----------------------------------------------------------------------------
+
+AbstractWindow::AbstractWindow ():
+
+    x_               (200),
+    y_               (200),
+    SizeX_           (200),
+    SizeY_           (200),
+    Status_          (BS_NONE)
+    {}
+
+//-----------------------------------------------------------------------------
+
+AbstractWindow::AbstractWindow ( int x, int y, int SizeX, int SizeY, int Status ):
+
+    x_               (x),
+    y_               (y),
+    SizeX_           (SizeX),
+    SizeY_           (SizeY),
+    Status_          (Status)
+    {}
+
+//-----------------------------------------------------------------------------
+
+Button::Button (int x, int y, int SizeX, int SizeY, int Status, void (*Func)(Button*), int FrameSize, const char* Text,
+                 COLORREF FrameColor, COLORREF ButtonColor):
+
+    AbstractWindow       (x, y, SizeX, SizeY, Status),
+    Func_                (Func),
+    FrameSize_           (FrameSize),
+    Text_                (Text),
+    HelpText_            (Text_),
+    FrameColor_          (FrameColor),
+    ButtonColor_         (ButtonColor)
+    {}
+
+//-----------------------------------------------------------------------------
+
+InstButton::InstButton (int x, int y, int SizeX, int SizeY, int Status, COLORREF Color, const char *Text,
+                 COLORREF FontColor, AbstractInst *Instrument, Canvas *canvas):
+
+    AbstractWindow       (x, y, SizeX, SizeY, Status),
+    Color_               (Color),
+    Text_                (Text),
+    FontColor_           (FontColor),
+    Instrument_          (Instrument),
+    canvas_              (canvas)
+    {}
+
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+Canvas::Canvas (int x, int y, int SizeX, int SizeY, int Status, void (*Func)(), AbstractInst *Inst,
+                COLORREF CanvasColor):
+
+    AbstractWindow       (x, y, SizeX, SizeY, Status),
+    Func_                (Func),
+    Inst_                (Inst),
+    CanvasColor_         (CanvasColor)
+    {}
+
+//-----------------------------------------------------------------------------
+
+void Canvas::onClick()
+    {
+    Inst_->Apply ( txMouseX(), txMouseY(), R, COLOR, TX_WHITE, 10, x_, y_, SizeX_ + x_, SizeY_ + y_ );
+    }
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+void AbstractWindow::Draw ()
+    {
+    txSetFillColor ( TX_WHITE );
+
+    txRectangle (x_, y_, SizeX_, SizeY_);
+    }
+
+//-----------------------------------------------------------------------------
+
+int AbstractWindow::HitTest ()
+    {
+    int mx = txMouseX(), my = txMouseY();
+
+    if ( x_ <= mx && mx <= x_ + SizeX_ && y_ <= my && my <= y_ + SizeY_ )
+        {
+        Status_ = BS_MOUSEOVER;
+
+        if ( txMouseButtons() == 1)
+            {
+            Status_ = BS_PRESSED;
+            onClick ();
+            }
+        }
+
+    else Status_ = BS_NONE;
+
+    }
+
+//-----------------------------------------------------------------------------
+
+void AbstractWindow::onClick ()
+    {}
+
+//-----------------------------------------------------------------------------
+
+void Button::onClick()
+    {
+    Func_(this);
+    }
+
+
+//-----------------------------------------------------------------------------
+
+void Button::Draw ()
+    {
+    //txSetColor (((Status_ == BS_MOUSEOVER) ? TX_LIGHTGREEN : ButtonColor_), FrameSize_);
+
+    txSetColor ((ButtonColor_), 0);
+
+    txSetFillColor (ButtonColor_);
+
+    int Expander = (Status_ == BS_MOUSEOVER) ? 0 : 0;
+
+    if (Status_ == BS_MOUSEOVER)
+        {
+        /*for (int x = 0; x < 255; x += 1)
+            {
+            txSetFillColor (RGB(x, x, x));
+
+            txRectangle (x_ - Expander, y_ - Expander, x_ + SizeX_ + Expander, y_ + SizeY_ + Expander);
+
+            if (Status_ == BS_PRESSED) COLOR = ButtonColor_;
+
+            txSleep();
+
+            //txSetFillColor (ButtonColor_);
+            }      */
+        }
+
+    txSetFillColor (ButtonColor_);
+
+
+    txRectangle (x_ - Expander, y_ - Expander, x_ + SizeX_ + Expander, y_ + SizeY_ + Expander);
+
+    txSetColor ((Status_ == BS_MOUSEOVER) ? ButtonColor_ : FrameColor_);
+
+    txSelectFont ("Arial", SizeY_/2);
+
+    txDrawText (x_, y_, x_ + SizeX_, y_ + SizeY_, Text_);
+    }
+
+//-----------------------------------------------------------------------------
+
+void Canvas::Draw ()
+    {
+    txSetFillColor (CanvasColor_);
+    txRectangle (x_, y_, x_ + SizeX_, y_ + SizeY_);
+    }
+
+//-----------------------------------------------------------------------------
+
+void InstButton::Draw ()
+    {
+    txSetFillColor ((Status_ == BS_MOUSEOVER) ? FontColor_ : Color_);
+    txRectangle (x_, y_, x_ + SizeX_, y_ + SizeY_);
+
+    txSetColor ((Status_ == BS_MOUSEOVER) ? Color_ : FontColor_);
+
+    txSelectFont ("Arial", SizeY_/3 );
+
+    txDrawText (x_, y_, x_ + SizeX_, y_ + SizeY_, Text_);
+    }
+
+//-----------------------------------------------------------------------------
+
+void InstButton::onClick()
+    {
+    canvas_->ChangeInst(Instrument_);
+    }
+
+//-----------------------------------------------------------------------------
+
+void CircleInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY )
+     {
+     txSetFillColor (FillColor);
+
+     while (txMouseButtons() == 1) {}
+
+     width = r/10;
+
+     txSetColor (Color, width);
+
+     int Radius = sqrt((txMouseX()-x)*(txMouseX()-x) + (txMouseY()-y)*(txMouseY()-y));
+
+     if ( x - Radius >= LX && x + Radius <= RX && y - Radius >= UY && y + Radius <= DY ) txCircle ( x, y, Radius );
+     }
+
+//-----------------------------------------------------------------------------
+
+void RectangleInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY )
+     {
+     txSetFillColor (FillColor);
+
+     while (txMouseButtons() == 1) {}
+     width = r/10;
+     txSetColor (Color, width);
+     if (txMouseX() >= LX && txMouseX() <= RX && txMouseY() >= UY && txMouseY() <= DY) txRectangle ( x, y, txMouseX(), txMouseY() );
+     }
+
+//-----------------------------------------------------------------------------
+
+void LineInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY )
+     {
+     txSetFillColor (FillColor);
+
+     while (txMouseButtons() == 1) {}
+     width = r/10;
+     txSetColor (Color, width);
+
+     if (txMouseX() >= LX && txMouseX() <= RX && txMouseY() >= UY && txMouseY() <= DY) txLine ( x, y, txMouseX(), txMouseY() );
+     }
+
+//-----------------------------------------------------------------------------
+
+void SprayInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
+                         int RX, int DY )
+    {
+    txSetColor (Color, 1);
+    txSetFillColor (Color);
+    width = r/15;
+
+    while (txMouseButtons() == 1)
+        {
+        x = txMouseX(), y = txMouseY();
+
+        int RandX = Random(x - r, x + r), RandY = Random(y - r, y + r);
+
+        if ( ((RandX - x)*(RandX - x) + (RandY - y)*(RandY - y)) <= r*r && x - r >= LX && x + r <= RX && y - r >= UY && y + r <= DY )
+            {
+            txCircle(RandX, RandY, width);
+            }
+
+        txSleep(0);
+        }
+    }
+
+//-----------------------------------------------------------------------------
+
+
+
+//-----------------------------------------------------------------------------
+
+/*void ARRManager::AllButtonsDraw ()
+    {
+    for (unsigned int i = 0; i < ButtAll.size(); i++)
+        (ButtAll[i])->Draw();
+    }
+
+//-----------------------------------------------------------------------------
+
+void ARRManager::AllButtonsHitTest ()
+    {
+    for (unsigned int i = 0; i < ButtAll.size(); i++)
+        {
+        (ButtAll[i])->HitTest();
+
+        if ((ButtAll[i])->Status_ == BS_PRESSED)
+            {
+            (ButtAll[i])->Func_();
+            }
+        }
+    }              */
+
+//-----------------------------------------------------------------------------
+
+void Canvas::ChangeInst (AbstractInst *Inst)
+    {
+    Inst_ = Inst;
+    }
+
+//-----------------------------------------------------------------------------
+
+void MouseDraw ()
+    {
+    txSetColor (COLOR);
+    txSetFillColor (COLOR);
+
+    txCircle ( txMouseX(), txMouseY(), 3 );
+    }
+
+//-----------------------------------------------------------------------------
+
+void SetColor ( Button *b )
+    {
+    COLOR = (b->ButtonColor_);
+    }
+
+//-----------------------------------------------------------------------------
+
+void RPLUS (Button *b)
+    {
+    R++;
+    //itoa (R, b->Text_, 10);
+    //b->Text_ = "R++";
+    }
+
+void RMINUS (Button *b)
+    {
+    R--;
+    }
+
+//-----------------------------------------------------------------------------
+
+int Random(int left, int right)
+    {
+    //return left + (right - left)*((double)rand()/RAND_MAX );
+    return left + rand() % ((int)right - (int)left);
+    }
+
