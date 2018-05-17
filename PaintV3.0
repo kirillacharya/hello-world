@@ -29,6 +29,8 @@ class AbstractWindow                                //PARENTAL CLASS
     AbstractWindow ();
     AbstractWindow ( int x, int y, int SizeX, int SizeY, int Status );
 
+    virtual ~AbstractWindow(){};
+
     int HitTest ();                                 //NORMAL FUNCTIONS
 
 
@@ -54,6 +56,11 @@ class Button : public AbstractWindow
     Button (int x, int y, int SizeX, int SizeY, int Status, void (*Func)(Button*), int FrameSize, const char* Text,
                  COLORREF FrameColor, COLORREF ButtonColor);
 
+    virtual ~Button(){};
+
+    Button& operator= (const Button& (*Func_)(Button*)) = delete;
+
+
     virtual void Draw () override;
     virtual void onClick () override;
 
@@ -68,6 +75,9 @@ class AbstractInst
     public:
     virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY );
+
+
+//    virtual ~AbstractInst(){};
     };
 
 //-----------------------------------------------------------------------------
@@ -77,6 +87,10 @@ class CircleInst : public AbstractInst
     public:
     virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY ) override;
+
+    virtual ~CircleInst(){};
+
+
     };
 
 //-----------------------------------------------------------------------------
@@ -86,6 +100,8 @@ class LineInst : public AbstractInst
     public:
     virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY ) override;
+
+    virtual ~LineInst(){};
     };
 
 //-----------------------------------------------------------------------------
@@ -95,6 +111,8 @@ class RectangleInst : public AbstractInst
     public:
     virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY ) override;
+
+    virtual ~RectangleInst(){};
     };
 
 //-----------------------------------------------------------------------------
@@ -104,6 +122,8 @@ class SprayInst : public AbstractInst
     public:
     virtual void Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY ) override;
+
+    virtual ~SprayInst(){};
     };
 
 //-----------------------------------------------------------------------------
@@ -113,6 +133,8 @@ class TextInst : public AbstractInst
     public:
     virtual void Apply (int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY) override;
+
+    virtual ~TextInst(){};
     };
 
 //-----------------------------------------------------------------------------
@@ -122,6 +144,8 @@ class PenInst : public AbstractInst
     public:
     virtual void Apply (int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY) override;
+
+    virtual ~PenInst(){};
     };
 
 //-----------------------------------------------------------------------------
@@ -197,9 +221,6 @@ int Random(int left, int right);
 int main()
     {
     txCreateWindow (1200, 650);
-
-    const double PX = (txGetExtentX()/100);
-    const double PY = (txGetExtentY()/100);
 
     CircleInst CI1;
     RectangleInst RI1;
@@ -304,8 +325,8 @@ InstButton::InstButton (int x, int y, int SizeX, int SizeY, int Status, COLORREF
 
     AbstractWindow       (x, y, SizeX, SizeY, Status),
     Color_               (Color),
-    Text_                (Text),
     FontColor_           (FontColor),
+    Text_                (Text),
     Instrument_          (Instrument),
     canvas_              (canvas)
     {}
@@ -357,7 +378,7 @@ int AbstractWindow::HitTest ()
         }
 
     else Status_ = BS_NONE;
-
+    /*****/    return BS_NONE;
     }
 
 //-----------------------------------------------------------------------------
@@ -383,7 +404,7 @@ void Button::Draw ()
 
     txRectangle (x_, y_, x_ + SizeX_, y_ + SizeY_);
 
-    txSelectFont ("Arial", SizeY_/3 );
+    txSelectFont ("Arial", SizeY_/3 + FrameSize_ );
 
     txDrawText (x_, y_, x_ + SizeX_, y_ + SizeY_, Text_);
     }
@@ -430,7 +451,7 @@ void CircleInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor
 
      txSetColor (Color, width);
 
-     int Radius = sqrt((txMouseX()-x)*(txMouseX()-x) + (txMouseY()-y)*(txMouseY()-y));
+     int Radius = ROUND(sqrt((txMouseX()-x)*(txMouseX()-x) + (txMouseY()-y)*(txMouseY()-y)));
 
      if ( x - Radius >= LX && x + Radius <= RX && y - Radius >= UY && y + Radius <= DY ) txCircle ( x, y, Radius );
      }
@@ -468,7 +489,7 @@ void SprayInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor,
                          int RX, int DY )
     {
     txSetColor (Color, 1);
-    txSetFillColor (Color);
+    txSetFillColor (FillColor);
     width = r/15;
 
     while (txMouseButtons() == 1)
@@ -493,12 +514,15 @@ void TextInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, 
     {
     const char* Text = txInputBox ("Please write the text down below", "TEXT INSTRUMENT", "");
 
+    Color = COLOR, FillColor = COLOR;
     txSetColor (Color);
+    txSetFillColor (FillColor);
 
-    txSelectFont ("Arial", r);
+    width = r;
 
-    txTextOut ( x, y, Text );
+    txSelectFont ("Arial", width);
 
+    if (txMouseX() >= LX && txMouseX() <= RX && txMouseY() >= UY && txMouseY() <= DY) txTextOut ( x, y, Text );
     }
 
 //-----------------------------------------------------------------------------
@@ -506,14 +530,17 @@ void TextInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, 
 void PenInst::Apply ( int x, int y, int r, COLORREF Color, COLORREF FillColor, int width, int LX, int UY,
                          int RX, int DY )
     {
-    txSetColor (COLOR);
-    txSetFillColor (COLOR);
+    Color = COLOR, FillColor = COLOR;
+    txSetColor (Color);
+    txSetFillColor (FillColor);
 
     width = r/6;
 
-    printf("%d\n", R);
+    if (width == 0) width = 1;
 
-    txCircle ( txMouseX(), txMouseY(), width );
+    x = txMouseX(), y = txMouseY();
+
+    if (x >= LX && x <= RX && y >= UY && y <= DY) txCircle ( x, y, width );
     }
 
 //-----------------------------------------------------------------------------
@@ -557,11 +584,14 @@ void SetColor ( Button *b )
 
 void RPLUS (Button *b)
     {
+    (b->FrameSize_)++;
     R++;
     }
 
 void RMINUS (Button *b)
     {
+    (b->FrameSize_)--;
+
     if (R >= 1) R--;
     else R = 1;
     }
